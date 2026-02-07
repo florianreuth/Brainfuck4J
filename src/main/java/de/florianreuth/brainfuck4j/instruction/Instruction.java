@@ -1,6 +1,6 @@
 /*
- * This file is part of Brainfuck4J - https://github.com/FlorianMichael/Brainfuck4J
- * Copyright (C) 2021-2026 FlorianMichael/EnZaXD <git@florianmichael.de> and contributors
+ * This file is part of Brainfuck4J - https://github.com/florianreuth/Brainfuck4J
+ * Copyright (C) 2021-2026 Florian Reuth <git@florianreuth.de> and contributors
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package de.florianmichael.brainfuck4j.instruction;
+package de.florianreuth.brainfuck4j.instruction;
 
 /**
  * Holder class to track how often a given instruction with a {@link InstructionType} has to be executed, used for the

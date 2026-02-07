@@ -8,8 +8,8 @@ Notable for its extreme minimalism, the language consists of only eight simple c
 Learn more about Brainfuck [here](https://en.wikipedia.org/wiki/Brainfuck)
 
 ## Contact
-If you encounter any issues, please report them on the [issue tracker](https://github.com/FlorianMichael/Brainfuck4J/issues).  
-If you just want to talk or need help with Brainfuck4J feel free to join my [Discord](https://florianmichael.de/discord).
+If you encounter any issues, please report them on the [issue tracker](https://github.com/florianreuth/Brainfuck4J/issues).  
+If you just want to talk or need help with Brainfuck4J feel free to join my [Discord](https://florianreuth.de/discord).
 
 ## Features
 - Fast interpreter with multiple dialects
@@ -64,15 +64,15 @@ java -jar Brainfuck4J-<version>.jar list memories
 ### Gradle/Maven
 
 To use Brainfuck4J with Gradle/Maven you can
-use [the Maven Central repository](https://mvnrepository.com/artifact/de.florianmichael/Brainfuck4J)
-or [my own repository](https://maven.florianmichael.de/#/releases/de/florianmichael/Brainfuck4J).  
+use [the Maven Central repository](https://mvnrepository.com/artifact/de.florianreuth/brainfuck4j)
+or [my own repository](https://maven.florianreuth.de/#/releases/de/florianreuth/brainfuck4j).  
 You can also find instructions how to implement it into your build script there.
 
 ### Jar File
 
 If you just want the latest jar file you can download it
-from [my build server](https://build.florianmichael.de/job/Brainfuck4J), [GitHub Actions](https://github.com/FlorianMichael/Brainfuck4J/actions)
-or use the [releases tab](https://github.com/FlorianMichael/Brainfuck4J/releases).
+from [my build server](https://build.florianreuth.de/job/Brainfuck4J), [GitHub Actions](https://github.com/florianreuth/Brainfuck4J/actions)
+or use the [releases tab](https://github.com/florianreuth/Brainfuck4J/releases).
 
 ### Examples
 
@@ -81,8 +81,8 @@ or use the [releases tab](https://github.com/FlorianMichael/Brainfuck4J/releases
 For accessing multiple dialects, the `DialectType` and `Dialect` classes can be used to convert between dialects or define your own:
 
 ```java
-import de.florianmichael.brainfuck4j.dialect.Dialect;
-import de.florianmichael.brainfuck4j.dialect.DialectType;
+import de.florianreuth.brainfuck4j.dialect.Dialect;
+import de.florianreuth.brainfuck4j.dialect.DialectType;
 
 // Convert a Brainfuck program to TrollScript
 final String trollScript = DialectType.BRAINFUCK.convert(
@@ -108,11 +108,11 @@ final Dialect customDialect = new Dialect(
 The main entry point is the singleton `Brainfuck4J.INSTANCE`. You supply input/output streams, a memory implementation and the (optionally pre-converted) program:
 
 ```java
-import de.florianmichael.brainfuck4j.Brainfuck4J;
-import de.florianmichael.brainfuck4j.dialect.DialectType;
-import de.florianmichael.brainfuck4j.memory.AbstractMemory;
-import de.florianmichael.brainfuck4j.memory.MemoryType;
-import de.florianmichael.brainfuck4j.instruction.Instruction;
+import de.florianreuth.brainfuck4j.Brainfuck4J;
+import de.florianreuth.brainfuck4j.dialect.DialectType;
+import de.florianreuth.brainfuck4j.memory.AbstractMemory;
+import de.florianreuth.brainfuck4j.memory.MemoryType;
+import de.florianreuth.brainfuck4j.instruction.Instruction;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

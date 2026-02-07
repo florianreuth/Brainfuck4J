@@ -1,11 +1,11 @@
-import de.florianmichael.baseproject.configureApplication
-import de.florianmichael.baseproject.configureExampleSourceSet
-import de.florianmichael.baseproject.configureShadedDependencies
-import de.florianmichael.baseproject.setupProject
-import de.florianmichael.baseproject.setupPublishing
+import de.florianreuth.baseproject.configureApplication
+import de.florianreuth.baseproject.configureExampleSourceSet
+import de.florianreuth.baseproject.configureShadedDependencies
+import de.florianreuth.baseproject.setupProject
+import de.florianreuth.baseproject.setupPublishing
 
 plugins {
-    id("de.florianmichael.baseproject.BaseProject")
+    id("de.florianreuth.baseproject")
 }
 
 setupProject()
