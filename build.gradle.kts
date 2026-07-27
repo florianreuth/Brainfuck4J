@@ -16,6 +16,6 @@ configureApplication()
 val shade = configureShadedDependencies()
 
 dependencies {
-    shade("com.fifesoft:rsyntaxtextarea:3.6.3")
+    shade("com.fifesoft:rsyntaxtextarea:4.0.0")
     shade("com.formdev:flatlaf:3.7.2")
 }
