@@ -1,17 +1,18 @@
 # Brainfuck4J
+
 Fast Java interpreter for Brainfuck language with optimizations, memory management and multi dialect support
 
 ## What is Brainfuck?
+
 Brainfuck is an esoteric programming language created in 1993 by Urban Müller. <br>
-Notable for its extreme minimalism, the language consists of only eight simple commands, a data pointer and an instruction pointer. While it is fully Turing complete, it is not intended for practical use, but to challenge and amuse programmers. Brainfuck requires one to break commands into microscopic steps.
+Notable for its extreme minimalism, the language consists of only eight simple commands, a data pointer and an
+instruction pointer. While it is fully Turing complete, it is not intended for practical use, but to challenge and amuse
+programmers. Brainfuck requires one to break commands into microscopic steps.
 
 Learn more about Brainfuck [here](https://en.wikipedia.org/wiki/Brainfuck)
 
-## Contact
-If you encounter any issues, please report them on the [issue tracker](https://github.com/florianreuth/Brainfuck4J/issues).  
-If you just want to talk or need help with Brainfuck4J feel free to join my [Discord](https://florianreuth.de/discord).
-
 ## Features
+
 - Fast interpreter with multiple dialects
 - Dialect converter
 - Swing-based GUI
@@ -59,26 +60,27 @@ java -jar Brainfuck4J-<version>.jar list dialects
 java -jar Brainfuck4J-<version>.jar list memories
 ```
 
-### Library
+### Use in Gradle
 
-### Gradle/Maven
+If you want to depend on Brainfuck4J in your own project, use the Maven repository here:
 
-To use Brainfuck4J with Gradle/Maven you can
-use [the Maven Central repository](https://mvnrepository.com/artifact/de.florianreuth/brainfuck4j)
-or [my own repository](https://maven.florianreuth.de/#/releases/de/florianreuth/brainfuck4j).  
-You can also find instructions how to implement it into your build script there.
+https://mvnrepository.com/artifact/de.florianreuth/brainfuck4j
 
-### Jar File
+or
 
-If you just want the latest jar file you can download it
-from [my build server](https://build.florianreuth.de/job/Brainfuck4J), [GitHub Actions](https://github.com/florianreuth/Brainfuck4J/actions)
-or use the [releases tab](https://github.com/florianreuth/Brainfuck4J/releases).
+https://maven.florianreuth.de/#/snapshots/de/florianreuth/brainfuck4j (for snapshots)
+
+The repository page includes the latest coordinates and setup instructions.
+
+Jar builds can be downloaded from my build server: https://build.florianreuth.de/job/Brainfuck4J/
+
 
 ### Examples
 
 #### Dialects
 
-For accessing multiple dialects, the `DialectType` and `Dialect` classes can be used to convert between dialects or define your own:
+For accessing multiple dialects, the `DialectType` and `Dialect` classes can be used to convert between dialects or
+define your own:
 
 ```java
 import de.florianreuth.brainfuck4j.dialect.Dialect;
@@ -105,7 +107,8 @@ final Dialect customDialect = new Dialect(
 
 #### Execute Brainfuck code (library API)
 
-The main entry point is the singleton `Brainfuck4J.INSTANCE`. You supply input/output streams, a memory implementation and the (optionally pre-converted) program:
+The main entry point is the singleton `Brainfuck4J.INSTANCE`. You supply input/output streams, a memory implementation
+and the (optionally pre-converted) program:
 
 ```java
 import de.florianreuth.brainfuck4j.Brainfuck4J;
@@ -163,8 +166,15 @@ System.out.println("Instructions executed: " + instructions.size());
 All undocumented methods and classes are considered internal implementation details and may change.
 
 ## Credits and sources
+
 This program / software was developed with the help of the following resources:
+
 - http://calmerthanyouare.org/2015/01/07/optimizing-brainfuck.html
 - http://www.hevanet.com/cristofd/brainfuck/qdb.c
 - http://www.hevanet.com/cristofd/brainfuck/
 - http://www.clifford.at/bfcpu/
+
+## Contact
+
+- Issues: https://github.com/florianreuth/Brainfuck4J/issues
+- Discord: https://florianreuth.de/discord
