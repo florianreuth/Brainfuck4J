@@ -1,6 +1,6 @@
-import de.florianreuth.baseproject.configureApplication
-import de.florianreuth.baseproject.configureExampleSourceSet
-import de.florianreuth.baseproject.configureShadedDependencies
+import de.florianreuth.baseproject.core.configureApplication
+import de.florianreuth.baseproject.core.configureShadedDependencies
+import de.florianreuth.baseproject.core.configureSourceSet
 import de.florianreuth.baseproject.setupProject
 import de.florianreuth.baseproject.setupPublishing
 
@@ -10,8 +10,9 @@ plugins {
 
 setupProject()
 setupPublishing()
-configureExampleSourceSet()
 configureApplication()
+
+configureSourceSet("example")
 
 val shade = configureShadedDependencies()
 
