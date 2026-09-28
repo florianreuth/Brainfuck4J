@@ -1,22 +1,17 @@
-import de.florianreuth.baseproject.core.configureApplication
-import de.florianreuth.baseproject.core.configureShadedDependencies
-import de.florianreuth.baseproject.core.configureSourceSet
-import de.florianreuth.baseproject.setupProject
-import de.florianreuth.baseproject.setupPublishing
+import de.florianreuth.baseproject.configureSourceSet
 
 plugins {
-    id("de.florianreuth.baseproject")
+    id("base.java")
+    id("base.maven_publish")
+    id("publishing.reposilite")
+    id("publishing.maven_central")
+    id("base.application")
+    id("configuration.shaded_dependencies")
 }
-
-setupProject()
-setupPublishing()
-configureApplication()
 
 configureSourceSet("example")
 
-val shade = configureShadedDependencies()
-
 dependencies {
-    shade("com.fifesoft:rsyntaxtextarea:4.0.1")
-    shade("com.formdev:flatlaf:3.7.2")
+    shadedDependencies(libs.rsyntaxtextarea)
+    shadedDependencies(libs.flatlaf)
 }

@@ -1,0 +1,4 @@
+[libraries]
+foojay-resolver-convention-plugin = { module = "org.gradle.toolchains.foojay-resolver-convention:org.gradle.toolchains.foojay-resolver-convention.gradle.plugin", version = "1.0.0" }
+rsyntaxtextarea = { module = "com.fifesoft:rsyntaxtextarea", version = "4.0.0" }
+flatlaf = { module = "com.formdev:flatlaf", version = "3.7.2" }
