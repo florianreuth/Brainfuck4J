@@ -60,7 +60,7 @@ public enum InstructionType {
      */
     OUTPUT,
     /**
-     * Reads one byte from the input into {@code cell[offset]}.
+     * Reads one byte from the input into {@code cell[offset]}, see {@link EndOfInput} for the end of input.
      */
     INPUT
 

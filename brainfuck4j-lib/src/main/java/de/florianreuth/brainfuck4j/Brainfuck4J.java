@@ -120,7 +120,8 @@ public final class Brainfuck4J {
     }
 
     private void input() {
-        pending.remove(offset);
+        // Flushed instead of dropped since EndOfInput.UNCHANGED keeps the cell value at the end of input
+        flushCell(offset);
         emit(InstructionType.INPUT, 0, offset);
     }
 

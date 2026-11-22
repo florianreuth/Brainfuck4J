@@ -43,6 +43,7 @@ public final class Program {
     private final int[] ops;
     private final int[] values;
     private final int[] offsets;
+    private final int span;
 
     /**
      * @param instructions The instruction stream, see {@link InstructionType} for the operand meanings.
@@ -54,6 +55,8 @@ public final class Program {
         this.ops = new int[length];
         this.values = new int[length];
         this.offsets = new int[length];
+        long minOffset = Long.MAX_VALUE;
+        long maxOffset = Long.MIN_VALUE;
         for (int i = 0; i < length; i++) {
             final Instruction instruction = this.instructions.get(i);
             validate(i, instruction);
@@ -71,7 +74,13 @@ public final class Program {
             };
             values[i] = instruction.value();
             offsets[i] = instruction.offset();
+            if (instruction.type() != InstructionType.MOVE && instruction.type() != InstructionType.LOOP_START && instruction.type() != InstructionType.LOOP_END && instruction.type() != InstructionType.SCAN) {
+                minOffset = Math.min(minOffset, instruction.offset());
+                maxOffset = Math.max(maxOffset, instruction.offset());
+            }
         }
+
+        this.span = minOffset > maxOffset ? 0 : (int) Math.min(Integer.MAX_VALUE, maxOffset - minOffset);
     }
 
     private void validate(final int index, final Instruction instruction) {
@@ -95,104 +104,209 @@ public final class Program {
     }
 
     /**
+     * @return The distance between the lowest and highest cell offset accessed from one pointer position, a {@link TapeBoundary#WRAP} memory needs more cells than this.
+     */
+    public int span() {
+        return span;
+    }
+
+    /**
      * Executes this program, blocking until it finishes, the memory keeps its state afterward.
      *
      * @param memory The memory to execute on, must not be shared with a concurrent execution.
-     * @param in     Input stream, read byte-wise, end of stream is read as -1.
+     * @param in     Input stream, read byte-wise, see {@link Memory#endOfInput()} for the end of stream.
      * @param out    Output stream, buffered and flushed on newline, before input and when finished.
      * @throws IOException               If reading or writing fails.
-     * @throws IndexOutOfBoundsException If a cell outside the memory is accessed.
+     * @throws IndexOutOfBoundsException If a cell outside the memory is accessed and {@link Memory#boundary()} is {@link TapeBoundary#ERROR}.
+     * @throws IllegalArgumentException  If the memory wraps and is not larger than {@link #span()}.
      */
     public void execute(final Memory memory, final InputStream in, final OutputStream out) throws IOException {
+        // Offset folding assumes distinct offsets are distinct cells, which a wrapping memory only guarantees above the span
+        if (memory.boundary() == TapeBoundary.WRAP && memory.size() <= span) {
+            throw new IllegalArgumentException("A wrapping memory needs more than " + span + " cells for this program, got " + memory.size());
+        }
+
         final int[] ops = this.ops;
         final int[] values = this.values;
         final int[] offsets = this.offsets;
         final int length = ops.length;
-        final int[] mem = memory.cells();
         final int shift = 32 - memory.type().bits;
+        final TapeBoundary boundary = memory.boundary();
+        final EndOfInput endOfInput = memory.endOfInput();
         final byte[] buffer = new byte[8192];
+        int[] mem = memory.cells();
         int buffered = 0;
         int p = memory.pointer();
         int pc = 0;
         int factor = 0;
         try {
-            for (; pc < length; pc++) {
-                switch (ops[pc]) {
-                    case OP_ADD -> {
-                        final int i = p + offsets[pc];
-                        mem[i] = (mem[i] + values[pc]) << shift >> shift;
-                    }
-                    case OP_SET -> mem[p + offsets[pc]] = values[pc] << shift >> shift;
-                    case OP_MOVE -> p += values[pc];
-                    case OP_LOOP_START -> {
-                        p += offsets[pc];
-                        if (mem[p] == 0) {
-                            pc = values[pc];
-                        }
-                    }
-                    case OP_LOOP_END -> {
-                        p += offsets[pc];
-                        if (mem[p] != 0) {
-                            pc = values[pc];
-                        }
-                    }
-                    case OP_LOAD -> {
-                        final int i = p + offsets[pc];
-                        factor = mem[i];
-                        if (factor == 0) {
-                            pc = values[pc];
-                        } else {
-                            mem[i] = 0;
-                        }
-                    }
-                    case OP_MULTIPLY -> {
-                        final int i = p + offsets[pc];
-                        mem[i] = (mem[i] + factor * values[pc]) << shift >> shift;
-                    }
-                    case OP_SCAN -> {
-                        p += offsets[pc];
-                        final int step = values[pc];
-                        while (mem[p] != 0) {
-                            p += step;
-                        }
-                    }
-                    case OP_OUTPUT -> {
-                        final byte b = (byte) mem[p + offsets[pc]];
-                        buffer[buffered++] = b;
-                        if (b == '\n' || buffered == buffer.length) {
-                            out.write(buffer, 0, buffered);
-                            out.flush();
-                            buffered = 0;
-                        }
-                    }
-                    case OP_INPUT -> {
-                        if (buffered > 0) {
-                            out.write(buffer, 0, buffered);
-                            out.flush();
-                            buffered = 0;
-                        }
+            while (pc < length) {
+                // Every instruction faults before its first side effect, so it can be retried or replayed after a boundary violation
+                try {
+                    for (; pc < length; pc++) {
+                        switch (ops[pc]) {
+                            case OP_ADD -> {
+                                final int i = p + offsets[pc];
+                                mem[i] = (mem[i] + values[pc]) << shift >> shift;
+                            }
+                            case OP_SET -> mem[p + offsets[pc]] = values[pc] << shift >> shift;
+                            case OP_MOVE -> p += values[pc];
+                            case OP_LOOP_START -> {
+                                final int next = p + offsets[pc];
+                                if (mem[next] == 0) {
+                                    pc = values[pc];
+                                }
 
-                        mem[p + offsets[pc]] = ((byte) in.read()) << shift >> shift;
+                                p = next;
+                            }
+                            case OP_LOOP_END -> {
+                                final int next = p + offsets[pc];
+                                if (mem[next] != 0) {
+                                    pc = values[pc];
+                                }
+
+                                p = next;
+                            }
+                            case OP_LOAD -> {
+                                final int i = p + offsets[pc];
+                                factor = mem[i];
+                                if (factor == 0) {
+                                    pc = values[pc];
+                                } else {
+                                    mem[i] = 0;
+                                }
+                            }
+                            case OP_MULTIPLY -> {
+                                final int i = p + offsets[pc];
+                                mem[i] = (mem[i] + factor * values[pc]) << shift >> shift;
+                            }
+                            case OP_SCAN -> {
+                                final int step = values[pc];
+                                int next = p + offsets[pc];
+                                while (mem[next] != 0) {
+                                    next += step;
+                                }
+
+                                p = next;
+                            }
+                            case OP_OUTPUT -> {
+                                final byte b = (byte) mem[p + offsets[pc]];
+                                buffer[buffered++] = b;
+                                if (b == '\n' || buffered == buffer.length) {
+                                    buffered = flush(out, buffer, buffered);
+                                }
+                            }
+                            case OP_INPUT -> {
+                                final int i = p + offsets[pc];
+                                // Reading the cell first makes an out of bounds access fail before any input is consumed
+                                final int current = mem[i];
+                                buffered = flush(out, buffer, buffered);
+                                mem[i] = input(in, current, endOfInput, shift);
+                            }
+                        }
                     }
+                } catch (final ArrayIndexOutOfBoundsException e) {
+                    final int op = ops[pc];
+                    final int index = op == OP_SCAN ? scanEnd(mem, p + offsets[pc], values[pc]) : p + offsets[pc];
+                    if (index >= 0 && index < mem.length) {
+                        throw e;
+                    }
+
+                    if (boundary == TapeBoundary.GROW) {
+                        p += memory.grow(index);
+                        mem = memory.cells();
+                        continue;
+                    }
+
+                    if (boundary == TapeBoundary.ERROR) {
+                        throw new IndexOutOfBoundsException((index < 0 ? "Memory underflow" : "Memory overflow") + " at cell " + index);
+                    }
+
+                    final int i = Math.floorMod(index, mem.length);
+                    p = Math.floorMod(p, mem.length);
+                    switch (op) {
+                        case OP_ADD -> mem[i] = (mem[i] + values[pc]) << shift >> shift;
+                        case OP_SET -> mem[i] = values[pc] << shift >> shift;
+                        case OP_LOOP_START -> {
+                            p = i;
+                            if (mem[p] == 0) {
+                                pc = values[pc];
+                            }
+                        }
+                        case OP_LOOP_END -> {
+                            p = i;
+                            if (mem[p] != 0) {
+                                pc = values[pc];
+                            }
+                        }
+                        case OP_LOAD -> {
+                            factor = mem[i];
+                            if (factor == 0) {
+                                pc = values[pc];
+                            } else {
+                                mem[i] = 0;
+                            }
+                        }
+                        case OP_MULTIPLY -> mem[i] = (mem[i] + factor * values[pc]) << shift >> shift;
+                        case OP_SCAN -> {
+                            int next = i;
+                            while (mem[next] != 0) {
+                                next = Math.floorMod(next + values[pc], mem.length);
+                            }
+
+                            p = next;
+                        }
+                        case OP_OUTPUT -> {
+                            final byte b = (byte) mem[i];
+                            buffer[buffered++] = b;
+                            if (b == '\n' || buffered == buffer.length) {
+                                buffered = flush(out, buffer, buffered);
+                            }
+                        }
+                        case OP_INPUT -> {
+                            buffered = flush(out, buffer, buffered);
+                            mem[i] = input(in, mem[i], endOfInput, shift);
+                        }
+                    }
+
+                    pc++;
                 }
             }
-        } catch (final ArrayIndexOutOfBoundsException e) {
-            // Bounds are only checked by the JVM's array access to keep pointer movement free of branches
-            final int op = ops[pc];
-            final int index = op == OP_SCAN || op == OP_LOOP_START || op == OP_LOOP_END ? p : p + offsets[pc];
-            if (index >= 0 && index < mem.length) {
-                throw e;
-            }
-
-            throw new IndexOutOfBoundsException((index < 0 ? "Memory underflow" : "Memory overflow") + " at cell " + index);
         } finally {
             memory.pointer(p);
-            if (buffered > 0) {
-                out.write(buffer, 0, buffered);
-            }
-
-            out.flush();
+            flush(out, buffer, buffered);
         }
+    }
+
+    private static int scanEnd(final int[] mem, final int start, final int step) {
+        int index = start;
+        while (index >= 0 && index < mem.length && mem[index] != 0) {
+            index += step;
+        }
+
+        return index;
+    }
+
+    private static int flush(final OutputStream out, final byte[] buffer, final int length) throws IOException {
+        if (length > 0) {
+            out.write(buffer, 0, length);
+        }
+
+        out.flush();
+        return 0;
+    }
+
+    private static int input(final InputStream in, final int current, final EndOfInput endOfInput, final int shift) throws IOException {
+        final int read = in.read();
+        if (read != -1) {
+            return ((byte) read) << shift >> shift;
+        }
+
+        return switch (endOfInput) {
+            case MINUS_ONE -> -1;
+            case ZERO -> 0;
+            case UNCHANGED -> current;
+        };
     }
 
 }

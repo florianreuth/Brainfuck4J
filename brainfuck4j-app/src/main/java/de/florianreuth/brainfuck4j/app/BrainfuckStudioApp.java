@@ -19,9 +19,12 @@ package de.florianreuth.brainfuck4j.app;
 
 import com.formdev.flatlaf.FlatLightLaf;
 import de.florianreuth.brainfuck4j.Brainfuck4J;
+import de.florianreuth.brainfuck4j.EndOfInput;
 import de.florianreuth.brainfuck4j.Instruction;
+import de.florianreuth.brainfuck4j.Memory;
 import de.florianreuth.brainfuck4j.MemoryType;
 import de.florianreuth.brainfuck4j.Program;
+import de.florianreuth.brainfuck4j.TapeBoundary;
 import de.florianreuth.brainfuck4j.dialect.DialectType;
 import de.florianreuth.brainfuck4j.export.ExportLanguage;
 import java.awt.BorderLayout;
@@ -64,6 +67,8 @@ public final class BrainfuckStudioApp extends JFrame {
     private final JTextArea inputArea = new JTextArea();
     private final JComboBox<DialectType> dialectBox = new JComboBox<>(DialectType.values());
     private final JComboBox<MemoryType> memoryBox = new JComboBox<>(MemoryType.values());
+    private final JComboBox<TapeBoundary> boundaryBox = new JComboBox<>(TapeBoundary.values());
+    private final JComboBox<EndOfInput> endOfInputBox = new JComboBox<>(EndOfInput.values());
     private final JTextField memorySizeField = new JTextField(String.valueOf(DEFAULT_MEMORY_SIZE), 8);
     private final JLabel statusLabel = new JLabel("Ready");
     private final InstructionsTableModel instructionsModel = new InstructionsTableModel();
@@ -104,6 +109,10 @@ public final class BrainfuckStudioApp extends JFrame {
         panel.add(memoryBox);
         panel.add(new JLabel("Size:"));
         panel.add(memorySizeField);
+        panel.add(new JLabel("Tape:"));
+        panel.add(boundaryBox);
+        panel.add(new JLabel("EOF:"));
+        panel.add(endOfInputBox);
 
         runButton.addActionListener(e -> runProgram());
         panel.add(runButton);
@@ -171,8 +180,7 @@ public final class BrainfuckStudioApp extends JFrame {
         stopButton.setEnabled(true);
 
         final String program = normalizedProgram();
-        final MemoryType memoryType = selectedMemoryType();
-        final int memorySize = selectedMemorySize();
+        final Memory memory = new Memory(selectedMemoryType(), selectedMemorySize(), (TapeBoundary) boundaryBox.getSelectedItem(), (EndOfInput) endOfInputBox.getSelectedItem());
         final byte[] stdin = inputArea.getText().getBytes(StandardCharsets.UTF_8);
         final TextAreaOutputStream output = new TextAreaOutputStream(outputArea);
         currentOutput = output;
@@ -185,7 +193,7 @@ public final class BrainfuckStudioApp extends JFrame {
                 try {
                     final long start = System.currentTimeMillis();
                     final Program compiled = Brainfuck4J.compile(program);
-                    compiled.execute(memoryType.create(memorySize), new ByteArrayInputStream(stdin), output);
+                    compiled.execute(memory, new ByteArrayInputStream(stdin), output);
                     instructions = compiled.instructions();
                     elapsedMillis = System.currentTimeMillis() - start;
                 } catch (final Throwable throwable) {
@@ -243,6 +251,11 @@ public final class BrainfuckStudioApp extends JFrame {
     }
 
     private void exportProgram() {
+        if (boundaryBox.getSelectedItem() != TapeBoundary.ERROR) {
+            JOptionPane.showMessageDialog(this, "Exported programs only support the ERROR tape boundary.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         final ExportLanguage language = (ExportLanguage) JOptionPane.showInputDialog(this, "Language:", "Export", JOptionPane.PLAIN_MESSAGE, null, ExportLanguage.values(), ExportLanguage.C);
         if (language == null) {
             return;
@@ -259,7 +272,8 @@ public final class BrainfuckStudioApp extends JFrame {
         final int dot = fileName.lastIndexOf('.');
         try {
             final Program program = Brainfuck4J.compile(normalizedProgram());
-            Files.writeString(path, language.export(program, selectedMemoryType(), selectedMemorySize(), dot == -1 ? fileName : fileName.substring(0, dot)));
+            final String source = language.export(program, selectedMemoryType(), selectedMemorySize(), (EndOfInput) endOfInputBox.getSelectedItem(), dot == -1 ? fileName : fileName.substring(0, dot));
+            Files.writeString(path, source);
             statusLabel.setText("Exported " + language.name + " to " + path);
         } catch (final IOException | IllegalArgumentException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);

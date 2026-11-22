@@ -17,6 +17,7 @@
 
 package de.florianreuth.brainfuck4j.export;
 
+import de.florianreuth.brainfuck4j.EndOfInput;
 import de.florianreuth.brainfuck4j.Instruction;
 import de.florianreuth.brainfuck4j.InstructionType;
 import de.florianreuth.brainfuck4j.MemoryType;
@@ -45,14 +46,15 @@ public final class JavaExporter {
     }
 
     /**
-     * @param program   The program to export.
-     * @param type      The cell width.
-     * @param size      The number of cells.
-     * @param className The name of the generated class, must match the file name.
+     * @param program    The program to export.
+     * @param type       The cell width.
+     * @param size       The number of cells, out of bounds access throws in the generated code.
+     * @param endOfInput The value stored by input instructions once the input has ended.
+     * @param className  The name of the generated class, must match the file name.
      * @return The Java source code.
      * @throws IllegalArgumentException If size is not positive or the class name is not a valid Java identifier.
      */
-    public static String export(final Program program, final MemoryType type, final int size, final String className) {
+    public static String export(final Program program, final MemoryType type, final int size, final EndOfInput endOfInput, final String className) {
         if (size <= 0) {
             throw new IllegalArgumentException("Memory size must be positive: " + size);
         }
@@ -106,9 +108,14 @@ public final class JavaExporter {
         writer.close("}");
         writer.close("}");
         writer.blank();
-        writer.open("private static int read() throws IOException {");
+        writer.open("private static int read(final int current) throws IOException {");
         writer.line("OUT.flush();");
-        writer.line("return (byte) IN.read();");
+        writer.line("final int value = IN.read();");
+        writer.line("return value == -1 ? " + switch (endOfInput) {
+            case MINUS_ONE -> "-1";
+            case ZERO -> "0";
+            case UNCHANGED -> "current";
+        } + " : (byte) value;");
         writer.close("}");
         writer.blank();
         writer.close("}");
@@ -194,7 +201,7 @@ public final class JavaExporter {
                 case BIT_8 -> "(byte) ";
                 case BIT_16 -> "(short) ";
                 case BIT_32 -> "";
-            } + "read();");
+            } + "read(" + cell + ");");
             case LOOP_END, MULTIPLY -> throw new IllegalStateException("Unexpected " + instruction.type() + " at index " + index);
         }
     }

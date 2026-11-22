@@ -16,6 +16,7 @@ Learn more about Brainfuck [here](https://en.wikipedia.org/wiki/Brainfuck)
 - Fast optimizing interpreter (offset folding of pointer moves, instruction batching, clear/multiplication/scan loops,
   pre-calculated loop points, buffered output)
 - Multiple dialects and a dialect converter
+- Configurable cell width, tape boundary behavior (error, wrap, grow) and end of input value
 - Export of programs as standalone C or Java source files
 - Swing-based GUI (Brainfuck Studio)
 - Command line interface
@@ -52,6 +53,9 @@ java -jar brainfuck4j-cli-<version>.jar run hello.bf
 
 # Run with explicit dialect and memory settings
 java -jar brainfuck4j-cli-<version>.jar run hello.bf --dialect BRAINFUCK --memory 32 --size 60000
+
+# Grow the tape instead of failing on out of bounds access and read 0 at the end of input
+java -jar brainfuck4j-cli-<version>.jar run hello.bf --boundary grow --eof zero
 
 # Convert between dialects
 java -jar brainfuck4j-cli-<version>.jar convert input.bf output.troll --from BRAINFUCK --to TROLLSCRIPT
@@ -119,9 +123,11 @@ input/output streams:
 
 ```java
 import de.florianreuth.brainfuck4j.Brainfuck4J;
+import de.florianreuth.brainfuck4j.EndOfInput;
 import de.florianreuth.brainfuck4j.Memory;
 import de.florianreuth.brainfuck4j.MemoryType;
 import de.florianreuth.brainfuck4j.Program;
+import de.florianreuth.brainfuck4j.TapeBoundary;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -130,8 +136,8 @@ import java.nio.charset.StandardCharsets;
 // Compile once, throws IllegalArgumentException on unbalanced loops
 final Program program = Brainfuck4J.compile(">++++++[<++++++>-]<.");
 
-// Choose cell width (BIT_8, BIT_16, BIT_32) and size
-final Memory memory = MemoryType.BIT_32.create(30000);
+// Choose cell width (BIT_8, BIT_16, BIT_32), size, tape boundary (ERROR, WRAP, GROW) and end of input (MINUS_ONE, ZERO, UNCHANGED)
+final Memory memory = new Memory(MemoryType.BIT_32, 30000, TapeBoundary.ERROR, EndOfInput.MINUS_ONE); // or MemoryType.BIT_32.create(30000)
 
 // Execute, throws IndexOutOfBoundsException if the program leaves the memory
 final ByteArrayOutputStream out = new ByteArrayOutputStream(); // or System.out
@@ -147,8 +153,10 @@ System.out.println("Optimized instructions: " + program.instructions().size());
 - `Program` is immutable and can be executed repeatedly (also concurrently, each execution with its own `Memory`).
 - `Instruction` and `InstructionType` describe the optimized instruction stream (`Program#instructions`).
 - `MemoryType` and `Memory` implement the memory model (8/16/32-bit cells, size, pointer state).
+- `TapeBoundary` defines out of bounds behavior: `ERROR` (default), `WRAP` (needs more cells than `Program#span`) or `GROW`.
+- `EndOfInput` defines the value read at the end of input: `MINUS_ONE` (default), `ZERO` or `UNCHANGED`.
 - `DialectType` and `Dialect` handle multi-dialect support and conversion.
-- `ExportLanguage` exports a `Program` as standalone C (unsigned cells, no bounds checks) or Java source file.
+- `ExportLanguage` exports a `Program` as standalone C (unsigned cells, no bounds checks) or Java source file, the end of input behavior is supported, the tape boundary always behaves like `ERROR` (unchecked in C).
 
 All undocumented methods and classes are considered internal implementation details and may change.
 

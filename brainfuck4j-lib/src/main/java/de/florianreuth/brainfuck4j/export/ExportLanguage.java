@@ -17,6 +17,7 @@
 
 package de.florianreuth.brainfuck4j.export;
 
+import de.florianreuth.brainfuck4j.EndOfInput;
 import de.florianreuth.brainfuck4j.MemoryType;
 import de.florianreuth.brainfuck4j.Program;
 
@@ -37,17 +38,18 @@ public enum ExportLanguage {
     }
 
     /**
-     * @param program The program to export.
-     * @param type    The cell width.
-     * @param size    The number of cells.
-     * @param name    The base name of the output file, used as Java class name and ignored for C.
+     * @param program    The program to export.
+     * @param type       The cell width.
+     * @param size       The number of cells, out of bounds access is unchecked in C and throws in Java.
+     * @param endOfInput The value stored by input instructions once the input has ended.
+     * @param name       The base name of the output file, used as Java class name and ignored for C.
      * @return The source code.
      * @throws IllegalArgumentException If size is not positive or the name is not a valid Java class name.
      */
-    public String export(final Program program, final MemoryType type, final int size, final String name) {
+    public String export(final Program program, final MemoryType type, final int size, final EndOfInput endOfInput, final String name) {
         return switch (this) {
-            case C -> CExporter.export(program, type, size);
-            case JAVA -> JavaExporter.export(program, type, size, name);
+            case C -> CExporter.export(program, type, size, endOfInput);
+            case JAVA -> JavaExporter.export(program, type, size, endOfInput, name);
         };
     }
 

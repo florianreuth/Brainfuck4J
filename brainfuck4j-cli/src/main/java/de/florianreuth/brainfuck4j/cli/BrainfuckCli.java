@@ -18,13 +18,17 @@
 package de.florianreuth.brainfuck4j.cli;
 
 import de.florianreuth.brainfuck4j.Brainfuck4J;
+import de.florianreuth.brainfuck4j.EndOfInput;
+import de.florianreuth.brainfuck4j.Memory;
 import de.florianreuth.brainfuck4j.MemoryType;
+import de.florianreuth.brainfuck4j.TapeBoundary;
 import de.florianreuth.brainfuck4j.dialect.DialectType;
 import de.florianreuth.brainfuck4j.export.ExportLanguage;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public final class BrainfuckCli {
 
@@ -65,13 +69,13 @@ public final class BrainfuckCli {
         System.out.println("Brainfuck4J CLI");
         System.out.println();
         System.out.println("Usage:");
-        System.out.println("  run <file> [--dialect <name>] [--memory <bits>] [--size <n>]");
+        System.out.println("  run <file> [--dialect <name>] [--memory <bits>] [--size <n>] [--boundary error|wrap|grow] [--eof minus-one|zero|unchanged]");
         System.out.println("      Execute a Brainfuck program from file, using stdin/stdout.");
         System.out.println();
         System.out.println("  convert <input> <output> --from <dialect> --to <dialect>");
         System.out.println("      Convert a program between dialects.");
         System.out.println();
-        System.out.println("  export <input> <output> [--language <name>] [--dialect <name>] [--memory <bits>] [--size <n>]");
+        System.out.println("  export <input> <output> [--language <name>] [--dialect <name>] [--memory <bits>] [--size <n>] [--eof minus-one|zero|unchanged]");
         System.out.println("      Export a program as standalone source file, the language defaults to the output extension.");
         System.out.println();
         System.out.println("  list dialects");
@@ -84,7 +88,7 @@ public final class BrainfuckCli {
 
     private static boolean run(final String[] args) throws Exception {
         if (args.length < 1) {
-            System.err.println("Usage: run <file> [--dialect <name>] [--memory <bits>] [--size <n>]");
+            System.err.println("Usage: run <file> [--dialect <name>] [--memory <bits>] [--size <n>] [--boundary error|wrap|grow] [--eof minus-one|zero|unchanged]");
             return false;
         }
 
@@ -97,25 +101,32 @@ public final class BrainfuckCli {
         DialectType dialect = DialectType.BRAINFUCK;
         MemoryType memoryType = MemoryType.BIT_32;
         int memorySize = 30000;
+        TapeBoundary boundary = TapeBoundary.ERROR;
+        EndOfInput endOfInput = EndOfInput.MINUS_ONE;
 
         for (int i = 1; i < args.length; i++) {
             final String opt = args[i];
             if ("--dialect".equals(opt) && i + 1 < args.length) {
-                dialect = DialectType.valueOf(args[++i].toUpperCase());
+                dialect = parseEnum(DialectType.class, args[++i]);
             } else if ("--memory".equals(opt) && i + 1 < args.length) {
                 memoryType = parseMemoryType(args[++i]);
             } else if ("--size".equals(opt) && i + 1 < args.length) {
                 memorySize = Integer.parseInt(args[++i]);
+            } else if ("--boundary".equals(opt) && i + 1 < args.length) {
+                boundary = parseEnum(TapeBoundary.class, args[++i]);
+            } else if ("--eof".equals(opt) && i + 1 < args.length) {
+                endOfInput = parseEnum(EndOfInput.class, args[++i]);
             }
         }
 
-        Brainfuck4J.compile(read(file, dialect)).execute(memoryType.create(memorySize), System.in, System.out);
+        final Memory memory = new Memory(memoryType, memorySize, boundary, endOfInput);
+        Brainfuck4J.compile(read(file, dialect)).execute(memory, System.in, System.out);
         return true;
     }
 
     private static boolean export(final String[] args) throws Exception {
         if (args.length < 2) {
-            System.err.println("Usage: export <input> <output> [--language <name>] [--dialect <name>] [--memory <bits>] [--size <n>]");
+            System.err.println("Usage: export <input> <output> [--language <name>] [--dialect <name>] [--memory <bits>] [--size <n>] [--eof minus-one|zero|unchanged]");
             return false;
         }
 
@@ -133,17 +144,20 @@ public final class BrainfuckCli {
         DialectType dialect = DialectType.BRAINFUCK;
         MemoryType memoryType = MemoryType.BIT_32;
         int memorySize = 30000;
+        EndOfInput endOfInput = EndOfInput.MINUS_ONE;
 
         for (int i = 2; i < args.length; i++) {
             final String opt = args[i];
             if ("--language".equals(opt) && i + 1 < args.length) {
-                language = ExportLanguage.valueOf(args[++i].toUpperCase());
+                language = parseEnum(ExportLanguage.class, args[++i]);
             } else if ("--dialect".equals(opt) && i + 1 < args.length) {
-                dialect = DialectType.valueOf(args[++i].toUpperCase());
+                dialect = parseEnum(DialectType.class, args[++i]);
             } else if ("--memory".equals(opt) && i + 1 < args.length) {
                 memoryType = parseMemoryType(args[++i]);
             } else if ("--size".equals(opt) && i + 1 < args.length) {
                 memorySize = Integer.parseInt(args[++i]);
+            } else if ("--eof".equals(opt) && i + 1 < args.length) {
+                endOfInput = parseEnum(EndOfInput.class, args[++i]);
             }
         }
 
@@ -152,7 +166,7 @@ public final class BrainfuckCli {
             return false;
         }
 
-        Files.writeString(output, language.export(Brainfuck4J.compile(read(input, dialect)), memoryType, memorySize, baseName));
+        Files.writeString(output, language.export(Brainfuck4J.compile(read(input, dialect)), memoryType, memorySize, endOfInput, baseName));
         System.out.println("Exported " + input + " -> " + output + " (" + language.name + ")");
         return true;
     }
@@ -175,6 +189,15 @@ public final class BrainfuckCli {
         throw new IllegalArgumentException("Unknown memory type: " + value + ", expected 8, 16 or 32");
     }
 
+    private static <T extends Enum<T>> T parseEnum(final Class<T> type, final String value) {
+        try {
+            return Enum.valueOf(type, value.toUpperCase().replace('-', '_'));
+        } catch (final IllegalArgumentException e) {
+            final String expected = Arrays.stream(type.getEnumConstants()).map(constant -> constant.name().toLowerCase().replace('_', '-')).collect(Collectors.joining(", "));
+            throw new IllegalArgumentException("Unknown value: " + value + ", expected one of " + expected);
+        }
+    }
+
     private static boolean convert(final String[] args) throws Exception {
         if (args.length < 4) {
             System.err.println("Usage: convert <input> <output> --from <dialect> --to <dialect>");
@@ -190,9 +213,9 @@ public final class BrainfuckCli {
         for (int i = 2; i < args.length; i++) {
             final String opt = args[i];
             if ("--from".equals(opt) && i + 1 < args.length) {
-                from = DialectType.valueOf(args[++i].toUpperCase());
+                from = parseEnum(DialectType.class, args[++i]);
             } else if ("--to".equals(opt) && i + 1 < args.length) {
-                to = DialectType.valueOf(args[++i].toUpperCase());
+                to = parseEnum(DialectType.class, args[++i]);
             }
         }
 
