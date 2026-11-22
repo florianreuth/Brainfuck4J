@@ -77,15 +77,15 @@ public final class ExportTest {
     @MethodSource("cases")
     public void java(final Case testCase) throws Exception {
         final Program program = Brainfuck4J.compile(testCase.code());
-        final Path source = directory.resolve(testCase.name() + ".java");
+        final Path source = this.directory.resolve(testCase.name() + ".java");
         Files.writeString(source, ExportLanguage.JAVA.export(program, testCase.type(), 30000, testCase.endOfInput(), testCase.name()));
 
         final JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         assertNotNull(compiler, "Tests must run on a JDK");
-        assertEquals(0, compiler.run(null, null, null, "-d", directory.toString(), source.toString()), "javac failed");
+        assertEquals(0, compiler.run(null, null, null, "-d", this.directory.toString(), source.toString()), "javac failed");
 
         final String java = Path.of(System.getProperty("java.home"), "bin", "java").toString();
-        assertArrayEquals(expected(program, testCase), run(testCase.input(), java, "-cp", directory.toString(), testCase.name()));
+        assertArrayEquals(expected(program, testCase), run(testCase.input(), java, "-cp", this.directory.toString(), testCase.name()));
     }
 
     @ParameterizedTest
@@ -93,8 +93,8 @@ public final class ExportTest {
     public void c(final Case testCase) throws Exception {
         assumeTrue(gccAvailable(), "gcc is not available");
         final Program program = Brainfuck4J.compile(testCase.code());
-        final Path source = directory.resolve(testCase.name() + ".c");
-        final Path executable = directory.resolve(testCase.name() + (System.getProperty("os.name").startsWith("Windows") ? ".exe" : ""));
+        final Path source = this.directory.resolve(testCase.name() + ".c");
+        final Path executable = this.directory.resolve(testCase.name() + (System.getProperty("os.name").startsWith("Windows") ? ".exe" : ""));
         Files.writeString(source, ExportLanguage.C.export(program, testCase.type(), 30000, testCase.endOfInput(), testCase.name()));
 
         run(new byte[0], "gcc", "-std=c99", "-O2", "-Wall", "-o", executable.toString(), source.toString());
@@ -114,8 +114,8 @@ public final class ExportTest {
 
     private static byte[] run(final byte[] input, final String... command) throws Exception {
         final Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
-        try (final OutputStream stdin = process.getOutputStream()) {
-            stdin.write(input);
+        try (final OutputStream processInput = process.getOutputStream()) {
+            processInput.write(input);
         }
 
         final byte[] output = process.getInputStream().readAllBytes();
@@ -134,7 +134,7 @@ public final class ExportTest {
                 final Process process = new ProcessBuilder("gcc", "--version").redirectErrorStream(true).start();
                 process.getInputStream().readAllBytes();
                 gccAvailable = process.waitFor(30, TimeUnit.SECONDS) && process.exitValue() == 0;
-            } catch (final IOException | InterruptedException e) {
+            } catch (final IOException | InterruptedException exception) {
                 gccAvailable = false;
             }
         }

@@ -29,20 +29,20 @@ import java.util.List;
  */
 public final class Program {
 
-    private static final int OP_ADD = 0;
-    private static final int OP_SET = 1;
-    private static final int OP_MOVE = 2;
-    private static final int OP_LOOP_START = 3;
-    private static final int OP_LOOP_END = 4;
-    private static final int OP_LOAD = 5;
-    private static final int OP_MULTIPLY = 6;
-    private static final int OP_SCAN = 7;
-    private static final int OP_OUTPUT = 8;
-    private static final int OP_INPUT = 9;
+    private static final int OPERATION_ADD = 0;
+    private static final int OPERATION_SET = 1;
+    private static final int OPERATION_MOVE = 2;
+    private static final int OPERATION_LOOP_START = 3;
+    private static final int OPERATION_LOOP_END = 4;
+    private static final int OPERATION_LOAD = 5;
+    private static final int OPERATION_MULTIPLY = 6;
+    private static final int OPERATION_SCAN = 7;
+    private static final int OPERATION_OUTPUT = 8;
+    private static final int OPERATION_INPUT = 9;
     private static final int CHECK_INTERVAL = 1 << 16;
 
     private final List<Instruction> instructions;
-    private final int[] ops;
+    private final int[] operations;
     private final int[] values;
     private final int[] offsets;
     private final int span;
@@ -54,43 +54,43 @@ public final class Program {
     public Program(final List<Instruction> instructions) {
         this.instructions = List.copyOf(instructions);
         final int length = this.instructions.size();
-        this.ops = new int[length];
+        this.operations = new int[length];
         this.values = new int[length];
         this.offsets = new int[length];
-        long minOffset = Long.MAX_VALUE;
-        long maxOffset = Long.MIN_VALUE;
+        long minimumOffset = Long.MAX_VALUE;
+        long maximumOffset = Long.MIN_VALUE;
         for (int i = 0; i < length; i++) {
             final Instruction instruction = this.instructions.get(i);
-            validate(i, instruction);
-            ops[i] = switch (instruction.type()) {
-                case ADD -> OP_ADD;
-                case SET -> OP_SET;
-                case MOVE -> OP_MOVE;
-                case LOOP_START -> OP_LOOP_START;
-                case LOOP_END -> OP_LOOP_END;
-                case LOAD -> OP_LOAD;
-                case MULTIPLY -> OP_MULTIPLY;
-                case SCAN -> OP_SCAN;
-                case OUTPUT -> OP_OUTPUT;
-                case INPUT -> OP_INPUT;
+            this.validate(i, instruction);
+            this.operations[i] = switch (instruction.type()) {
+                case ADD -> OPERATION_ADD;
+                case SET -> OPERATION_SET;
+                case MOVE -> OPERATION_MOVE;
+                case LOOP_START -> OPERATION_LOOP_START;
+                case LOOP_END -> OPERATION_LOOP_END;
+                case LOAD -> OPERATION_LOAD;
+                case MULTIPLY -> OPERATION_MULTIPLY;
+                case SCAN -> OPERATION_SCAN;
+                case OUTPUT -> OPERATION_OUTPUT;
+                case INPUT -> OPERATION_INPUT;
             };
-            values[i] = instruction.value();
-            offsets[i] = instruction.offset();
+            this.values[i] = instruction.value();
+            this.offsets[i] = instruction.offset();
             if (instruction.type() != InstructionType.MOVE && instruction.type() != InstructionType.LOOP_START && instruction.type() != InstructionType.LOOP_END && instruction.type() != InstructionType.SCAN) {
-                minOffset = Math.min(minOffset, instruction.offset());
-                maxOffset = Math.max(maxOffset, instruction.offset());
+                minimumOffset = Math.min(minimumOffset, instruction.offset());
+                maximumOffset = Math.max(maximumOffset, instruction.offset());
             }
         }
 
-        this.span = minOffset > maxOffset ? 0 : (int) Math.min(Integer.MAX_VALUE, maxOffset - minOffset);
+        this.span = minimumOffset > maximumOffset ? 0 : (int) Math.min(Integer.MAX_VALUE, maximumOffset - minimumOffset);
     }
 
     private void validate(final int index, final Instruction instruction) {
         final int target = instruction.value();
         final boolean valid = switch (instruction.type()) {
-            case LOOP_START -> target > index && target < instructions.size() && instructions.get(target).type() == InstructionType.LOOP_END && instructions.get(target).value() == index;
-            case LOOP_END -> target >= 0 && target < index && instructions.get(target).type() == InstructionType.LOOP_START && instructions.get(target).value() == index;
-            case LOAD -> target > index && target < instructions.size() && instructions.subList(index + 1, target + 1).stream().allMatch(it -> it.type() == InstructionType.MULTIPLY);
+            case LOOP_START -> target > index && target < this.instructions.size() && this.instructions.get(target).type() == InstructionType.LOOP_END && this.instructions.get(target).value() == index;
+            case LOOP_END -> target >= 0 && target < index && this.instructions.get(target).type() == InstructionType.LOOP_START && this.instructions.get(target).value() == index;
+            case LOAD -> target > index && target < this.instructions.size() && this.instructions.subList(index + 1, target + 1).stream().allMatch(following -> following.type() == InstructionType.MULTIPLY);
             default -> true;
         };
         if (!valid) {
@@ -102,139 +102,140 @@ public final class Program {
      * @return The optimized instruction stream, immutable.
      */
     public List<Instruction> instructions() {
-        return instructions;
+        return this.instructions;
     }
 
     /**
      * @return The distance between the lowest and highest cell offset accessed from one pointer position, a {@link TapeBoundary#WRAP} memory needs more cells than this.
      */
     public int span() {
-        return span;
+        return this.span;
     }
 
     /**
      * Executes this program without limits, see {@link #execute(Memory, InputStream, OutputStream, ExecutionLimits)}.
      */
-    public void execute(final Memory memory, final InputStream in, final OutputStream out) throws IOException {
-        execute(memory, in, out, ExecutionLimits.NONE);
+    public void execute(final Memory memory, final InputStream input, final OutputStream output) throws IOException {
+        this.execute(memory, input, output, ExecutionLimits.NONE);
     }
 
     /**
      * Executes this program, blocking until it finishes, the memory keeps its state afterward.
      *
      * @param memory The memory to execute on, must not be shared with a concurrent execution.
-     * @param in     Input stream, read byte-wise, see {@link Memory#endOfInput()} for the end of stream.
-     * @param out    Output stream, buffered and flushed on newline, before input and when finished.
+     * @param input  Input stream, read byte-wise, see {@link Memory#endOfInput()} for the end of stream.
+     * @param output Output stream, buffered and flushed on newline, before input and when finished.
      * @param limits The resource limits of this execution.
      * @throws IOException               If reading or writing fails.
      * @throws InterruptedIOException    If the executing thread is interrupted, checked every few thousand loop iterations.
-     * @throws IndexOutOfBoundsException If a cell outside the memory is accessed with {@link TapeBoundary#ERROR}, or growing exceeds {@link ExecutionLimits#maxCells()}.
-     * @throws IllegalStateException     If {@link ExecutionLimits#maxIterations()} is exceeded.
+     * @throws IndexOutOfBoundsException If a cell outside the memory is accessed with {@link TapeBoundary#ERROR}, or growing exceeds {@link ExecutionLimits#maximumCells()}.
+     * @throws IllegalStateException     If {@link ExecutionLimits#maximumIterations()} is exceeded.
      * @throws IllegalArgumentException  If the memory wraps and is not larger than {@link #span()}.
      */
-    public void execute(final Memory memory, final InputStream in, final OutputStream out, final ExecutionLimits limits) throws IOException {
+    public void execute(final Memory memory, final InputStream input, final OutputStream output, final ExecutionLimits limits) throws IOException {
         // Offset folding assumes distinct offsets are distinct cells, which a wrapping memory only guarantees above the span
-        if (memory.boundary() == TapeBoundary.WRAP && memory.size() <= span) {
-            throw new IllegalArgumentException("A wrapping memory needs more than " + span + " cells for this program, got " + memory.size());
+        if (memory.boundary() == TapeBoundary.WRAP && memory.size() <= this.span) {
+            throw new IllegalArgumentException("A wrapping memory needs more than " + this.span + " cells for this program, got " + memory.size());
         }
 
-        final int[] ops = this.ops;
+        // Local copies keep the arrays in registers during the interpreter loop
+        final int[] operations = this.operations;
         final int[] values = this.values;
         final int[] offsets = this.offsets;
-        final int length = ops.length;
+        final int length = operations.length;
         final int shift = 32 - memory.type().bits;
         final TapeBoundary boundary = memory.boundary();
         final EndOfInput endOfInput = memory.endOfInput();
         final byte[] buffer = new byte[8192];
-        int[] mem = memory.cells();
+        int[] cells = memory.cells();
         int buffered = 0;
-        int p = memory.pointer();
-        int pc = 0;
+        int pointer = memory.pointer();
+        int programCounter = 0;
         int factor = 0;
         // Iterations are handed out in chunks so the hot path only decrements an int on loop back-edges, the budget ends on the first iteration over the limit
-        final long budget = limits.maxIterations() == Long.MAX_VALUE ? Long.MAX_VALUE : limits.maxIterations() + 1;
+        final long budget = limits.maximumIterations() == Long.MAX_VALUE ? Long.MAX_VALUE : limits.maximumIterations() + 1;
         int tick = (int) Math.min(CHECK_INTERVAL, budget);
         long left = budget - tick;
         try {
-            while (pc < length) {
+            while (programCounter < length) {
                 // Every instruction faults before its first side effect, so it can be retried or replayed after a boundary violation
                 try {
-                    for (; pc < length; pc++) {
-                        switch (ops[pc]) {
-                            case OP_ADD -> {
-                                final int i = p + offsets[pc];
-                                mem[i] = (mem[i] + values[pc]) << shift >> shift;
+                    for (; programCounter < length; programCounter++) {
+                        switch (operations[programCounter]) {
+                            case OPERATION_ADD -> {
+                                final int cell = pointer + offsets[programCounter];
+                                cells[cell] = (cells[cell] + values[programCounter]) << shift >> shift;
                             }
-                            case OP_SET -> mem[p + offsets[pc]] = values[pc] << shift >> shift;
-                            case OP_MOVE -> p += values[pc];
-                            case OP_LOOP_START -> {
-                                final int next = p + offsets[pc];
-                                if (mem[next] == 0) {
-                                    pc = values[pc];
+                            case OPERATION_SET -> cells[pointer + offsets[programCounter]] = values[programCounter] << shift >> shift;
+                            case OPERATION_MOVE -> pointer += values[programCounter];
+                            case OPERATION_LOOP_START -> {
+                                final int next = pointer + offsets[programCounter];
+                                if (cells[next] == 0) {
+                                    programCounter = values[programCounter];
                                 }
 
-                                p = next;
+                                pointer = next;
                             }
-                            case OP_LOOP_END -> {
-                                final int next = p + offsets[pc];
-                                if (mem[next] != 0) {
-                                    pc = values[pc];
+                            case OPERATION_LOOP_END -> {
+                                final int next = pointer + offsets[programCounter];
+                                if (cells[next] != 0) {
+                                    programCounter = values[programCounter];
                                     if (--tick == 0) {
                                         tick = checkpoint(left, limits);
                                         left -= tick;
                                     }
                                 }
 
-                                p = next;
+                                pointer = next;
                             }
-                            case OP_LOAD -> {
-                                final int i = p + offsets[pc];
-                                factor = mem[i];
+                            case OPERATION_LOAD -> {
+                                final int cell = pointer + offsets[programCounter];
+                                factor = cells[cell];
                                 if (factor == 0) {
-                                    pc = values[pc];
+                                    programCounter = values[programCounter];
                                 } else {
-                                    mem[i] = 0;
+                                    cells[cell] = 0;
                                 }
                             }
-                            case OP_MULTIPLY -> {
-                                final int i = p + offsets[pc];
-                                mem[i] = (mem[i] + factor * values[pc]) << shift >> shift;
+                            case OPERATION_MULTIPLY -> {
+                                final int cell = pointer + offsets[programCounter];
+                                cells[cell] = (cells[cell] + factor * values[programCounter]) << shift >> shift;
                             }
-                            case OP_SCAN -> {
-                                final int step = values[pc];
-                                int next = p + offsets[pc];
-                                while (mem[next] != 0) {
+                            case OPERATION_SCAN -> {
+                                final int step = values[programCounter];
+                                int next = pointer + offsets[programCounter];
+                                while (cells[next] != 0) {
                                     next += step;
                                 }
 
-                                p = next;
+                                pointer = next;
                             }
-                            case OP_OUTPUT -> {
-                                final byte b = (byte) mem[p + offsets[pc]];
-                                buffer[buffered++] = b;
-                                if (b == '\n' || buffered == buffer.length) {
-                                    buffered = flush(out, buffer, buffered);
+                            case OPERATION_OUTPUT -> {
+                                final byte value = (byte) cells[pointer + offsets[programCounter]];
+                                buffer[buffered++] = value;
+                                if (value == '\n' || buffered == buffer.length) {
+                                    buffered = flush(output, buffer, buffered);
                                 }
                             }
-                            case OP_INPUT -> {
-                                final int i = p + offsets[pc];
+                            case OPERATION_INPUT -> {
+                                final int cell = pointer + offsets[programCounter];
                                 // Reading the cell first makes an out of bounds access fail before any input is consumed
-                                final int current = mem[i];
-                                buffered = flush(out, buffer, buffered);
-                                mem[i] = input(in, current, endOfInput, shift);
+                                final int current = cells[cell];
+                                buffered = flush(output, buffer, buffered);
+                                cells[cell] = read(input, current, endOfInput, shift);
                             }
                         }
                     }
-                } catch (final ArrayIndexOutOfBoundsException e) {
-                    final int op = ops[pc];
-                    final int index = op == OP_SCAN ? scanEnd(mem, p + offsets[pc], values[pc]) : p + offsets[pc];
-                    if (index >= 0 && index < mem.length) {
-                        throw e;
+                } catch (final ArrayIndexOutOfBoundsException exception) {
+                    final int operation = operations[programCounter];
+                    final int index = operation == OPERATION_SCAN ? scanEnd(cells, pointer + offsets[programCounter], values[programCounter]) : pointer + offsets[programCounter];
+                    if (index >= 0 && index < cells.length) {
+                        throw exception;
                     }
 
                     if (boundary == TapeBoundary.GROW) {
-                        p += memory.grow(index, limits.maxCells());
-                        mem = memory.cells();
+                        pointer += memory.grow(index, limits.maximumCells());
+                        cells = memory.cells();
                         continue;
                     }
 
@@ -242,40 +243,40 @@ public final class Program {
                         throw new IndexOutOfBoundsException((index < 0 ? "Memory underflow" : "Memory overflow") + " at cell " + index);
                     }
 
-                    final int i = Math.floorMod(index, mem.length);
-                    p = Math.floorMod(p, mem.length);
-                    switch (op) {
-                        case OP_ADD -> mem[i] = (mem[i] + values[pc]) << shift >> shift;
-                        case OP_SET -> mem[i] = values[pc] << shift >> shift;
-                        case OP_LOOP_START -> {
-                            p = i;
-                            if (mem[p] == 0) {
-                                pc = values[pc];
+                    final int cell = Math.floorMod(index, cells.length);
+                    pointer = Math.floorMod(pointer, cells.length);
+                    switch (operation) {
+                        case OPERATION_ADD -> cells[cell] = (cells[cell] + values[programCounter]) << shift >> shift;
+                        case OPERATION_SET -> cells[cell] = values[programCounter] << shift >> shift;
+                        case OPERATION_LOOP_START -> {
+                            pointer = cell;
+                            if (cells[pointer] == 0) {
+                                programCounter = values[programCounter];
                             }
                         }
-                        case OP_LOOP_END -> {
-                            p = i;
-                            if (mem[p] != 0) {
-                                pc = values[pc];
+                        case OPERATION_LOOP_END -> {
+                            pointer = cell;
+                            if (cells[pointer] != 0) {
+                                programCounter = values[programCounter];
                                 if (--tick == 0) {
                                     tick = checkpoint(left, limits);
                                     left -= tick;
                                 }
                             }
                         }
-                        case OP_LOAD -> {
-                            factor = mem[i];
+                        case OPERATION_LOAD -> {
+                            factor = cells[cell];
                             if (factor == 0) {
-                                pc = values[pc];
+                                programCounter = values[programCounter];
                             } else {
-                                mem[i] = 0;
+                                cells[cell] = 0;
                             }
                         }
-                        case OP_MULTIPLY -> mem[i] = (mem[i] + factor * values[pc]) << shift >> shift;
-                        case OP_SCAN -> {
-                            int next = i;
-                            while (mem[next] != 0) {
-                                next = Math.floorMod(next + values[pc], mem.length);
+                        case OPERATION_MULTIPLY -> cells[cell] = (cells[cell] + factor * values[programCounter]) << shift >> shift;
+                        case OPERATION_SCAN -> {
+                            int next = cell;
+                            while (cells[next] != 0) {
+                                next = Math.floorMod(next + values[programCounter], cells.length);
                                 // A wrapping scan without zero cell never ends, so it has to stay interruptible
                                 if (--tick == 0) {
                                     tick = checkpoint(left, limits);
@@ -283,27 +284,27 @@ public final class Program {
                                 }
                             }
 
-                            p = next;
+                            pointer = next;
                         }
-                        case OP_OUTPUT -> {
-                            final byte b = (byte) mem[i];
-                            buffer[buffered++] = b;
-                            if (b == '\n' || buffered == buffer.length) {
-                                buffered = flush(out, buffer, buffered);
+                        case OPERATION_OUTPUT -> {
+                            final byte value = (byte) cells[cell];
+                            buffer[buffered++] = value;
+                            if (value == '\n' || buffered == buffer.length) {
+                                buffered = flush(output, buffer, buffered);
                             }
                         }
-                        case OP_INPUT -> {
-                            buffered = flush(out, buffer, buffered);
-                            mem[i] = input(in, mem[i], endOfInput, shift);
+                        case OPERATION_INPUT -> {
+                            buffered = flush(output, buffer, buffered);
+                            cells[cell] = read(input, cells[cell], endOfInput, shift);
                         }
                     }
 
-                    pc++;
+                    programCounter++;
                 }
             }
         } finally {
-            memory.pointer(p);
-            flush(out, buffer, buffered);
+            memory.pointer(pointer);
+            flush(output, buffer, buffered);
         }
     }
 
@@ -313,34 +314,34 @@ public final class Program {
         }
 
         if (left == 0) {
-            throw new IllegalStateException("Loop iteration limit of " + limits.maxIterations() + " exceeded");
+            throw new IllegalStateException("Loop iteration limit of " + limits.maximumIterations() + " exceeded");
         }
 
         return (int) Math.min(CHECK_INTERVAL, left);
     }
 
-    private static int scanEnd(final int[] mem, final int start, final int step) {
+    private static int scanEnd(final int[] cells, final int start, final int step) {
         int index = start;
-        while (index >= 0 && index < mem.length && mem[index] != 0) {
+        while (index >= 0 && index < cells.length && cells[index] != 0) {
             index += step;
         }
 
         return index;
     }
 
-    private static int flush(final OutputStream out, final byte[] buffer, final int length) throws IOException {
+    private static int flush(final OutputStream output, final byte[] buffer, final int length) throws IOException {
         if (length > 0) {
-            out.write(buffer, 0, length);
+            output.write(buffer, 0, length);
         }
 
-        out.flush();
+        output.flush();
         return 0;
     }
 
-    private static int input(final InputStream in, final int current, final EndOfInput endOfInput, final int shift) throws IOException {
-        final int read = in.read();
-        if (read != -1) {
-            return ((byte) read) << shift >> shift;
+    private static int read(final InputStream input, final int current, final EndOfInput endOfInput, final int shift) throws IOException {
+        final int value = input.read();
+        if (value != -1) {
+            return ((byte) value) << shift >> shift;
         }
 
         return switch (endOfInput) {

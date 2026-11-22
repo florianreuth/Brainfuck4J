@@ -35,17 +35,17 @@ public final class SourceWriter {
     }
 
     public SourceWriter line(final String line) {
-        if (afterBlock) {
-            builder.append('\n');
+        if (this.afterBlock) {
+            this.builder.append('\n');
         }
 
-        write(line);
+        this.write(line);
         return this;
     }
 
     public SourceWriter blank() {
-        afterBlock = false;
-        builder.append('\n');
+        this.afterBlock = false;
+        this.builder.append('\n');
         return this;
     }
 
@@ -53,8 +53,8 @@ public final class SourceWriter {
      * Writes a line and indents all following lines one level deeper.
      */
     public SourceWriter open(final String line) {
-        line(line);
-        indent++;
+        this.line(line);
+        this.indent++;
         return this;
     }
 
@@ -62,9 +62,9 @@ public final class SourceWriter {
      * Indents all following lines one level less and writes a line.
      */
     public SourceWriter close(final String line) {
-        indent--;
-        write(line);
-        afterBlock = true;
+        this.indent--;
+        this.write(line);
+        this.afterBlock = true;
         return this;
     }
 
@@ -72,19 +72,19 @@ public final class SourceWriter {
      * Appends the content of another writer, keeping its pending block separation.
      */
     public SourceWriter append(final SourceWriter other) {
-        builder.append(other.builder);
-        afterBlock = other.afterBlock;
+        this.builder.append(other.builder);
+        this.afterBlock = other.afterBlock;
         return this;
     }
 
     private void write(final String line) {
-        afterBlock = false;
-        builder.append("    ".repeat(indent)).append(line).append('\n');
+        this.afterBlock = false;
+        this.builder.append("    ".repeat(this.indent)).append(line).append('\n');
     }
 
     @Override
     public String toString() {
-        return builder.toString();
+        return this.builder.toString();
     }
 
 }

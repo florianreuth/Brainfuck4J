@@ -20,10 +20,10 @@ package de.florianreuth.brainfuck4j;
 /**
  * Resource limits of a single {@link Program#execute(Memory, java.io.InputStream, java.io.OutputStream, ExecutionLimits)} call.
  *
- * @param maxIterations Maximum number of repeated loop iterations, exceeding it throws an {@link IllegalStateException}.
- * @param maxCells      Maximum number of cells a {@link TapeBoundary#GROW} memory may grow to, exceeding it throws an {@link IndexOutOfBoundsException}.
+ * @param maximumIterations Maximum number of repeated loop iterations, exceeding it throws an {@link IllegalStateException}.
+ * @param maximumCells      Maximum number of cells a {@link TapeBoundary#GROW} memory may grow to, exceeding it throws an {@link IndexOutOfBoundsException}.
  */
-public record ExecutionLimits(long maxIterations, int maxCells) {
+public record ExecutionLimits(long maximumIterations, int maximumCells) {
 
     /**
      * No limits, the execution may run forever.
@@ -34,8 +34,8 @@ public record ExecutionLimits(long maxIterations, int maxCells) {
      * @throws IllegalArgumentException If a limit is not positive.
      */
     public ExecutionLimits {
-        if (maxIterations <= 0 || maxCells <= 0) {
-            throw new IllegalArgumentException("Limits must be positive: " + maxIterations + " iterations, " + maxCells + " cells");
+        if (maximumIterations <= 0 || maximumCells <= 0) {
+            throw new IllegalArgumentException("Limits must be positive: " + maximumIterations + " iterations, " + maximumCells + " cells");
         }
     }
 

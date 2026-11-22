@@ -31,27 +31,27 @@ public record Dialect(String increasePointer, String decreasePointer, String inc
      * @return The converted code.
      */
     public String convert(final String code, final Dialect target) {
-        final String[] from = keywords();
+        final String[] from = this.keywords();
         final String[] to = target.keywords();
-        final StringBuilder output = new StringBuilder();
+        final StringBuilder converted = new StringBuilder();
         int index = 0;
         outer:
         while (index < code.length()) {
             for (int i = 0; i < from.length; i++) {
                 if (code.startsWith(from[i], index)) {
-                    output.append(to[i]);
+                    converted.append(to[i]);
                     index += from[i].length();
                     continue outer;
                 }
             }
             index++;
         }
-        return output.toString();
+        return converted.toString();
     }
 
     private String[] keywords() {
         // Output before input since COW uses the same keyword for both and printing is the common case
-        return new String[]{increasePointer, decreasePointer, increaseValue, decreaseValue, loopStart, loopEnd, output, input};
+        return new String[]{this.increasePointer, this.decreasePointer, this.increaseValue, this.decreaseValue, this.loopStart, this.loopEnd, this.output, this.input};
     }
 
 }

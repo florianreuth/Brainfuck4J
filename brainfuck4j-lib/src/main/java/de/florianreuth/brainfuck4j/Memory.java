@@ -24,7 +24,7 @@ package de.florianreuth.brainfuck4j;
  */
 public final class Memory {
 
-    private static final int MAX_SIZE = Integer.MAX_VALUE - 8;
+    private static final int MAXIMUM_SIZE = Integer.MAX_VALUE - 8;
 
     private final MemoryType type;
     private final TapeBoundary boundary;
@@ -63,37 +63,37 @@ public final class Memory {
     }
 
     public MemoryType type() {
-        return type;
+        return this.type;
     }
 
     public TapeBoundary boundary() {
-        return boundary;
+        return this.boundary;
     }
 
     public EndOfInput endOfInput() {
-        return endOfInput;
+        return this.endOfInput;
     }
 
     public int size() {
-        return cells.length;
+        return this.cells.length;
     }
 
     /**
      * @return The live backing array, replaced when the memory grows, values must stay sign-extended to {@link MemoryType#bits}.
      */
     public int[] cells() {
-        return cells;
+        return this.cells;
     }
 
     /**
      * @return The index of the initial first cell within {@link #cells()}, increases when the memory grows to the left.
      */
     public int origin() {
-        return origin;
+        return this.origin;
     }
 
     public int pointer() {
-        return pointer;
+        return this.pointer;
     }
 
     /**
@@ -111,35 +111,35 @@ public final class Memory {
      * @throws IndexOutOfBoundsException If the required size exceeds the maximum array size.
      */
     public int grow(final int index) {
-        return grow(index, Integer.MAX_VALUE);
+        return this.grow(index, Integer.MAX_VALUE);
     }
 
     /**
      * Grows the memory with zeroed cells so the given index becomes valid, independent of {@link #boundary()}.
      *
-     * @param index   An index relative to the current cells, may be negative.
-     * @param maxSize The maximum number of cells after growing.
+     * @param index       An index relative to the current cells, may be negative.
+     * @param maximumSize The maximum number of cells after growing.
      * @return The amount all existing indices including the pointer were shifted by, positive when grown to the left.
-     * @throws IndexOutOfBoundsException If the required size exceeds maxSize or the maximum array size.
+     * @throws IndexOutOfBoundsException If the required size exceeds maximumSize or the maximum array size.
      */
-    public int grow(final int index, final int maxSize) {
-        if (index >= 0 && index < cells.length) {
+    public int grow(final int index, final int maximumSize) {
+        if (index >= 0 && index < this.cells.length) {
             return 0;
         }
 
-        final long limit = Math.min(maxSize, MAX_SIZE);
-        final long required = index < 0 ? cells.length - (long) index : index + 1L;
+        final long limit = Math.min(maximumSize, MAXIMUM_SIZE);
+        final long required = index < 0 ? this.cells.length - (long) index : index + 1L;
         if (required > limit) {
             throw new IndexOutOfBoundsException("Memory can not grow beyond " + limit + " cells to reach cell " + index);
         }
 
-        final int size = (int) Math.min(limit, Math.max(2L * cells.length, required));
+        final int size = (int) Math.min(limit, Math.max(2L * this.cells.length, required));
         final int[] grown = new int[size];
-        final int shift = index < 0 ? size - cells.length : 0;
-        System.arraycopy(cells, 0, grown, shift, cells.length);
-        cells = grown;
-        origin += shift;
-        pointer += shift;
+        final int shift = index < 0 ? size - this.cells.length : 0;
+        System.arraycopy(this.cells, 0, grown, shift, this.cells.length);
+        this.cells = grown;
+        this.origin += shift;
+        this.pointer += shift;
         return shift;
     }
 

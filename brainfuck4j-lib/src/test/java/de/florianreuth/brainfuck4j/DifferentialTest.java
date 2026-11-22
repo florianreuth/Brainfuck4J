@@ -78,12 +78,12 @@ public final class DifferentialTest {
     private static String compare(final Program program, final ReferenceInterpreter.Result expected, final Memory memory, final byte[] input) throws IOException {
         // Output beyond what the reference produced means the optimized run diverged, so it is cut off early
         final int outputLimit = expected.output().length + 64;
-        final ByteArrayOutputStream out = new ByteArrayOutputStream() {
+        final ByteArrayOutputStream output = new ByteArrayOutputStream() {
             @Override
-            public void write(final byte[] b, final int off, final int len) {
-                final int allowed = Math.min(len, outputLimit - size());
-                super.write(b, off, Math.max(0, allowed));
-                if (allowed < len) {
+            public void write(final byte[] bytes, final int offset, final int length) {
+                final int allowed = Math.min(length, outputLimit - this.size());
+                super.write(bytes, offset, Math.max(0, allowed));
+                if (allowed < length) {
                     throw new IllegalStateException("Output limit exceeded");
                 }
             }
@@ -91,16 +91,16 @@ public final class DifferentialTest {
 
         boolean error = false;
         try {
-            program.execute(memory, new ByteArrayInputStream(input), out, new ExecutionLimits(10_000_000, 1 << 20));
-        } catch (final IndexOutOfBoundsException e) {
+            program.execute(memory, new ByteArrayInputStream(input), output, new ExecutionLimits(10_000_000, 1 << 20));
+        } catch (final IndexOutOfBoundsException exception) {
             error = true;
-        } catch (final IllegalStateException e) {
+        } catch (final IllegalStateException exception) {
             if (!expected.error()) {
-                return e.getMessage();
+                return exception.getMessage();
             }
         }
 
-        final byte[] actual = out.toByteArray();
+        final byte[] actual = output.toByteArray();
         if (expected.error()) {
             // ERROR mode only fails on performed accesses, optimized away no-op accesses may let the program continue
             final boolean prefix = actual.length >= expected.output().length && Arrays.equals(actual, 0, expected.output().length, expected.output(), 0, expected.output().length);

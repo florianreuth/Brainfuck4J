@@ -40,9 +40,9 @@ public final class DialectTest {
 
     @Test
     public void customDialect() {
-        final Dialect words = new Dialect("right ", "left ", "inc ", "dec ", "open ", "close ", "in ", "out ");
-        assertEquals("inc inc open right inc left dec close right out ", DialectType.BRAINFUCK.dialect.convert("++[>+<-]>.", words));
-        assertEquals("++[>+<-]>.", words.convert("inc inc open right inc left dec close right out ", DialectType.BRAINFUCK.dialect));
+        final Dialect words = new Dialect("right ", "left ", "increase ", "decrease ", "open ", "close ", "read ", "write ");
+        assertEquals("increase increase open right increase left decrease close right write ", DialectType.BRAINFUCK.dialect.convert("++[>+<-]>.", words));
+        assertEquals("++[>+<-]>.", words.convert("increase increase open right increase left decrease close right write ", DialectType.BRAINFUCK.dialect));
     }
 
 }

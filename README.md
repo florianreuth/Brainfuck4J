@@ -140,10 +140,10 @@ final Program program = Brainfuck4J.compile(">++++++[<++++++>-]<.");
 final Memory memory = new Memory(MemoryType.BIT_32, 30000, TapeBoundary.ERROR, EndOfInput.MINUS_ONE); // or MemoryType.BIT_32.create(30000)
 
 // Execute, throws IndexOutOfBoundsException if the program leaves the memory
-final ByteArrayOutputStream out = new ByteArrayOutputStream(); // or System.out
-program.execute(memory, new ByteArrayInputStream(new byte[0]), out);
+final ByteArrayOutputStream output = new ByteArrayOutputStream(); // or System.out
+program.execute(memory, new ByteArrayInputStream(new byte[0]), output);
 
-System.out.println("Program output: " + out.toString(StandardCharsets.UTF_8));
+System.out.println("Program output: " + output.toString(StandardCharsets.UTF_8));
 System.out.println("Optimized instructions: " + program.instructions().size());
 ```
 

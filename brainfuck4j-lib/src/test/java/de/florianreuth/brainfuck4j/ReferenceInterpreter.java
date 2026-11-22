@@ -32,25 +32,25 @@ public final class ReferenceInterpreter {
     }
 
     /**
-     * @param code     Pure Brainfuck code with balanced loops.
-     * @param maxSteps The maximum number of executed commands.
+     * @param code         Pure Brainfuck code with balanced loops.
+     * @param maximumSteps The maximum number of executed commands.
      * @return The result, or null if the step limit was reached.
      */
-    public static Result run(final String code, final MemoryType type, final int size, final TapeBoundary boundary, final EndOfInput endOfInput, final byte[] input, final long maxSteps) {
+    public static Result run(final String code, final MemoryType type, final int size, final TapeBoundary boundary, final EndOfInput endOfInput, final byte[] input, final long maximumSteps) {
         final int shift = 32 - type.bits;
         final int[] tape = new int[size];
         final Map<Long, Integer> outside = new HashMap<>();
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream output = new ByteArrayOutputStream();
         final int[] match = matchLoops(code);
         long pointer = 0;
         long steps = 0;
         int read = 0;
-        for (int pc = 0; pc < code.length(); pc++) {
-            if (++steps > maxSteps) {
+        for (int programCounter = 0; programCounter < code.length(); programCounter++) {
+            if (++steps > maximumSteps) {
                 return null;
             }
 
-            final char command = code.charAt(pc);
+            final char command = code.charAt(programCounter);
             if (command == '>' || command == '<') {
                 pointer += command == '>' ? 1 : -1;
                 continue;
@@ -59,14 +59,14 @@ public final class ReferenceInterpreter {
             final long index = boundary == TapeBoundary.WRAP ? Math.floorMod(pointer, (long) size) : pointer;
             final boolean inside = index >= 0 && index < size;
             if (!inside && boundary == TapeBoundary.ERROR) {
-                return new Result(out.toByteArray(), true);
+                return new Result(output.toByteArray(), true);
             }
 
             int value = inside ? tape[(int) index] : outside.getOrDefault(index, 0);
             switch (command) {
                 case '+' -> value = (value + 1) << shift >> shift;
                 case '-' -> value = (value - 1) << shift >> shift;
-                case '.' -> out.write(value);
+                case '.' -> output.write(value);
                 case ',' -> {
                     if (read < input.length) {
                         value = input[read++] << shift >> shift;
@@ -80,12 +80,12 @@ public final class ReferenceInterpreter {
                 }
                 case '[' -> {
                     if (value == 0) {
-                        pc = match[pc];
+                        programCounter = match[programCounter];
                     }
                 }
                 case ']' -> {
                     if (value != 0) {
-                        pc = match[pc];
+                        programCounter = match[programCounter];
                     }
                 }
                 default -> {
@@ -99,7 +99,7 @@ public final class ReferenceInterpreter {
             }
         }
 
-        return new Result(out.toByteArray(), false);
+        return new Result(output.toByteArray(), false);
     }
 
     private static int[] matchLoops(final String code) {

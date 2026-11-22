@@ -67,7 +67,7 @@ public final class JavaExporter {
         final SourceWriter main = new SourceWriter(2);
         main.line("int p = 0;");
         exporter.range(main, 0, exporter.instructions.size());
-        main.line("OUT.flush();");
+        main.line("O.flush();");
 
         final String array = switch (type) {
             case BIT_8 -> "byte";
@@ -85,37 +85,37 @@ public final class JavaExporter {
         writer.blank();
         writer.open("public final class " + className + " {");
         writer.blank();
-        writer.line("private static final " + array + "[] MEMORY = new " + array + "[" + size + "];");
-        writer.line("private static final InputStream IN = System.in;");
-        writer.line("private static final OutputStream OUT = new BufferedOutputStream(new FileOutputStream(FileDescriptor.out));");
+        writer.line("private static final " + array + "[] M = new " + array + "[" + size + "];");
+        writer.line("private static final InputStream I = System.in;");
+        writer.line("private static final OutputStream O = new BufferedOutputStream(new FileOutputStream(FileDescriptor.out));");
         writer.blank();
-        writer.open("public static void main(final String[] args) throws IOException {");
+        writer.open("public static void main(final String[] a) throws IOException {");
         writer.append(main);
         writer.close("}");
         for (int i = 0; i < exporter.methods.size(); i++) {
             writer.blank();
-            writer.open("private static int block" + i + "(int p) throws IOException {");
+            writer.open("private static int b" + i + "(int p) throws IOException {");
             writer.append(exporter.methods.get(i));
             writer.line("return p;");
             writer.close("}");
         }
 
         writer.blank();
-        writer.open("private static void write(final int value) throws IOException {");
-        writer.line("OUT.write(value);");
-        writer.open("if ((byte) value == '\\n') {");
-        writer.line("OUT.flush();");
+        writer.open("private static void w(final int v) throws IOException {");
+        writer.line("O.write(v);");
+        writer.open("if ((byte) v == '\\n') {");
+        writer.line("O.flush();");
         writer.close("}");
         writer.close("}");
         writer.blank();
-        writer.open("private static int read(final int current) throws IOException {");
-        writer.line("OUT.flush();");
-        writer.line("final int value = IN.read();");
-        writer.line("return value == -1 ? " + switch (endOfInput) {
+        writer.open("private static int r(final int v) throws IOException {");
+        writer.line("O.flush();");
+        writer.line("final int c = I.read();");
+        writer.line("return c == -1 ? " + switch (endOfInput) {
             case MINUS_ONE -> "-1";
             case ZERO -> "0";
-            case UNCHANGED -> "current";
-        } + " : (byte) value;");
+            case UNCHANGED -> "v";
+        } + " : (byte) c;");
         writer.close("}");
         writer.blank();
         writer.close("}");
@@ -124,25 +124,25 @@ public final class JavaExporter {
 
     private void range(final SourceWriter writer, final int from, final int to) {
         if (to - from <= CHUNK_SIZE) {
-            units(writer, from, to);
+            this.units(writer, from, to);
             return;
         }
 
         int start = from;
         while (start < to) {
-            int end = unitEnd(start);
-            while (end < to && unitEnd(end) - start <= CHUNK_SIZE) {
-                end = unitEnd(end);
+            int end = this.unitEnd(start);
+            while (end < to && this.unitEnd(end) - start <= CHUNK_SIZE) {
+                end = this.unitEnd(end);
             }
 
-            if (unitEnd(start) == end && instructions.get(start).type() == InstructionType.LOOP_START) {
+            if (this.unitEnd(start) == end && this.instructions.get(start).type() == InstructionType.LOOP_START) {
                 // A single oversized loop stays inline, its body gets split recursively instead
-                units(writer, start, end);
+                this.units(writer, start, end);
             } else {
                 final SourceWriter method = new SourceWriter(2);
-                writer.line("p = block" + methods.size() + "(p);");
-                methods.add(method);
-                units(method, start, end);
+                writer.line("p = b" + this.methods.size() + "(p);");
+                this.methods.add(method);
+                this.units(method, start, end);
             }
 
             start = end;
@@ -150,13 +150,13 @@ public final class JavaExporter {
     }
 
     private void units(final SourceWriter writer, final int from, final int to) {
-        for (int i = from; i < to; i = unitEnd(i)) {
-            unit(writer, i);
+        for (int i = from; i < to; i = this.unitEnd(i)) {
+            this.unit(writer, i);
         }
     }
 
     private int unitEnd(final int index) {
-        final Instruction instruction = instructions.get(index);
+        final Instruction instruction = this.instructions.get(index);
         return switch (instruction.type()) {
             case LOOP_START, LOAD -> instruction.value() + 1;
             default -> index + 1;
@@ -164,18 +164,18 @@ public final class JavaExporter {
     }
 
     private void unit(final SourceWriter writer, final int index) {
-        final Instruction instruction = instructions.get(index);
+        final Instruction instruction = this.instructions.get(index);
         final int value = instruction.value();
         final String cell = cell(instruction.offset());
         switch (instruction.type()) {
             case ADD -> writer.line(cell + operator(value) + magnitude(value) + ";");
-            case SET -> writer.line(cell + " = " + (value << (32 - type.bits) >> (32 - type.bits)) + ";");
+            case SET -> writer.line(cell + " = " + (value << (32 - this.type.bits) >> (32 - this.type.bits)) + ";");
             case MOVE -> writer.line("p" + operator(value) + magnitude(value) + ";");
             case LOOP_START -> {
                 move(writer, instruction.offset());
-                writer.open("while (MEMORY[p] != 0) {");
-                range(writer, index + 1, value);
-                move(writer, instructions.get(value).offset());
+                writer.open("while (M[p] != 0) {");
+                this.range(writer, index + 1, value);
+                move(writer, this.instructions.get(value).offset());
                 writer.close("}");
             }
             case LOAD -> {
@@ -183,7 +183,7 @@ public final class JavaExporter {
                 writer.line("final int f = " + cell + ";");
                 writer.line(cell + " = 0;");
                 for (int i = index + 1; i <= value; i++) {
-                    final Instruction multiply = instructions.get(i);
+                    final Instruction multiply = this.instructions.get(i);
                     final int factor = multiply.value();
                     writer.line(cell(multiply.offset()) + operator(factor) + (Math.abs(factor) == 1 ? "f" : "f * " + magnitude(factor)) + ";");
                 }
@@ -192,16 +192,16 @@ public final class JavaExporter {
             }
             case SCAN -> {
                 move(writer, instruction.offset());
-                writer.open("while (MEMORY[p] != 0) {");
+                writer.open("while (M[p] != 0) {");
                 writer.line("p" + operator(value) + magnitude(value) + ";");
                 writer.close("}");
             }
-            case OUTPUT -> writer.line("write(" + cell + ");");
-            case INPUT -> writer.line(cell + " = " + switch (type) {
+            case OUTPUT -> writer.line("w(" + cell + ");");
+            case INPUT -> writer.line(cell + " = " + switch (this.type) {
                 case BIT_8 -> "(byte) ";
                 case BIT_16 -> "(short) ";
                 case BIT_32 -> "";
-            } + "read(" + cell + ");");
+            } + "r(" + cell + ");");
             case LOOP_END, MULTIPLY -> throw new IllegalStateException("Unexpected " + instruction.type() + " at index " + index);
         }
     }
@@ -214,10 +214,10 @@ public final class JavaExporter {
 
     private static String cell(final int offset) {
         if (offset == 0) {
-            return "MEMORY[p]";
+            return "M[p]";
         }
 
-        return "MEMORY[p" + (offset < 0 ? " - " : " + ") + magnitude(offset) + "]";
+        return "M[p" + (offset < 0 ? " - " : " + ") + magnitude(offset) + "]";
     }
 
     private static String operator(final int value) {

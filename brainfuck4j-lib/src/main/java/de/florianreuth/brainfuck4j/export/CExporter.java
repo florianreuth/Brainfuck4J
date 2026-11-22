@@ -52,25 +52,25 @@ public final class CExporter {
         writer.line("#include <stdint.h>");
         writer.line("#include <stdio.h>");
         writer.blank();
-        writer.line("typedef uint" + type.bits + "_t cell;");
+        writer.line("typedef uint" + type.bits + "_t T;");
         writer.blank();
-        writer.line("static cell memory[" + size + "];");
+        writer.line("static T m[" + size + "];");
         writer.blank();
         if (instructions.stream().anyMatch(instruction -> instruction.type() == InstructionType.INPUT)) {
-            writer.open("static cell input(const cell current) {");
+            writer.open("static T i(const T v) {");
             writer.line("fflush(stdout);");
             writer.line("const int c = getchar();");
             writer.line("return c == EOF ? " + switch (endOfInput) {
-                case MINUS_ONE -> "(cell) -1";
+                case MINUS_ONE -> "(T) -1";
                 case ZERO -> "0";
-                case UNCHANGED -> "current";
-            } + " : (cell) (int8_t) c;");
+                case UNCHANGED -> "v";
+            } + " : (T) (int8_t) c;");
             writer.close("}");
             writer.blank();
         }
 
         writer.open("int main(void) {");
-        writer.line("cell *p = memory;");
+        writer.line("T *p = m;");
         writer.blank();
 
         int closeAt = -1;
@@ -92,7 +92,7 @@ public final class CExporter {
                 }
                 case LOAD -> {
                     writer.open("if (" + cell + ") {");
-                    writer.line("const cell f = " + cell + ";");
+                    writer.line("const T f = " + cell + ";");
                     writer.line(cell + " = 0;");
                     closeAt = value;
                 }
@@ -104,7 +104,7 @@ public final class CExporter {
                     writer.close("}");
                 }
                 case OUTPUT -> writer.line("putchar(" + cell + ");");
-                case INPUT -> writer.line(cell + " = input(" + cell + ");");
+                case INPUT -> writer.line(cell + " = i(" + cell + ");");
             }
 
             if (i == closeAt) {

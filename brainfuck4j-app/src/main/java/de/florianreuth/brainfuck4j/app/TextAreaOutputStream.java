@@ -38,36 +38,36 @@ public final class TextAreaOutputStream extends OutputStream {
     }
 
     @Override
-    public void write(final int b) throws IOException {
-        ensureOpen();
-        buffer.write(b);
+    public void write(final int value) throws IOException {
+        this.ensureOpen();
+        this.buffer.write(value);
     }
 
     @Override
-    public void write(final byte[] b, final int off, final int len) throws IOException {
-        ensureOpen();
-        buffer.write(b, off, len);
+    public void write(final byte[] bytes, final int offset, final int length) throws IOException {
+        this.ensureOpen();
+        this.buffer.write(bytes, offset, length);
     }
 
     @Override
     public void flush() throws IOException {
-        ensureOpen();
-        if (buffer.size() == 0) {
+        this.ensureOpen();
+        if (this.buffer.size() == 0) {
             return;
         }
 
-        final String text = buffer.toString(StandardCharsets.UTF_8);
-        buffer.reset();
-        SwingUtilities.invokeLater(() -> textArea.append(text));
+        final String text = this.buffer.toString(StandardCharsets.UTF_8);
+        this.buffer.reset();
+        SwingUtilities.invokeLater(() -> this.textArea.append(text));
     }
 
     @Override
     public void close() {
-        closed = true;
+        this.closed = true;
     }
 
     private void ensureOpen() throws IOException {
-        if (closed) {
+        if (this.closed) {
             throw new IOException("Execution cancelled");
         }
     }

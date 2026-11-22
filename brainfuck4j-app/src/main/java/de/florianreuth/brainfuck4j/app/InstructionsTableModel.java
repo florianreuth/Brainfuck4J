@@ -32,12 +32,12 @@ public final class InstructionsTableModel extends AbstractTableModel {
 
     public void setInstructions(final List<Instruction> instructions) {
         this.data = instructions;
-        fireTableDataChanged();
+        this.fireTableDataChanged();
     }
 
     @Override
     public int getRowCount() {
-        return data.size();
+        return this.data.size();
     }
 
     @Override
@@ -52,7 +52,7 @@ public final class InstructionsTableModel extends AbstractTableModel {
 
     @Override
     public Object getValueAt(final int rowIndex, final int columnIndex) {
-        final Instruction instruction = data.get(rowIndex);
+        final Instruction instruction = this.data.get(rowIndex);
         return switch (columnIndex) {
             case 0 -> rowIndex;
             case 1 -> instruction.type();

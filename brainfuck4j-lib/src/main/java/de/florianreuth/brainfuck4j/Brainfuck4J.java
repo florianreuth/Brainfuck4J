@@ -80,19 +80,19 @@ public final class Brainfuck4J {
         final Deque<Integer> loops = new ArrayDeque<>();
         int length = 0;
         for (int i = 0; i < input.length(); i++) {
-            final char c = input.charAt(i);
-            switch (c) {
-                case '+', '-', '>', '<', '.', ',' -> tokens[length++] = (byte) c;
+            final char character = input.charAt(i);
+            switch (character) {
+                case '+', '-', '>', '<', '.', ',' -> tokens[length++] = (byte) character;
                 case '[' -> {
                     loops.push(i);
-                    tokens[length++] = (byte) c;
+                    tokens[length++] = (byte) character;
                 }
                 case ']' -> {
                     if (loops.poll() == null) {
                         throw new IllegalArgumentException("Unmatched ']' at index " + i);
                     }
 
-                    tokens[length++] = (byte) c;
+                    tokens[length++] = (byte) character;
                 }
                 default -> {
                 }
@@ -107,22 +107,22 @@ public final class Brainfuck4J {
     }
 
     private void add(final int delta) {
-        pending.merge(offset, new CellChange(false, delta), (current, change) -> new CellChange(current.set(), current.value() + change.value()));
+        this.pending.merge(this.offset, new CellChange(false, delta), (current, change) -> new CellChange(current.set(), current.value() + change.value()));
     }
 
     private void clear() {
-        pending.put(offset, new CellChange(true, 0));
+        this.pending.put(this.offset, new CellChange(true, 0));
     }
 
     private void output() {
-        flushCell(offset);
-        emit(InstructionType.OUTPUT, 0, offset);
+        this.flushCell(this.offset);
+        this.emit(InstructionType.OUTPUT, 0, this.offset);
     }
 
     private void input() {
         // Flushed instead of dropped since EndOfInput.UNCHANGED keeps the cell value at the end of input
-        flushCell(offset);
-        emit(InstructionType.INPUT, 0, offset);
+        this.flushCell(this.offset);
+        this.emit(InstructionType.INPUT, 0, this.offset);
     }
 
     private int loop(final byte[] tokens, final int start) {
@@ -148,82 +148,82 @@ public final class Brainfuck4J {
             deltas.values().removeIf(delta -> delta == 0);
             final int current = deltas.getOrDefault(0, 0);
             if (move == 0 && deltas.size() == 1 && (current == 1 || current == -1)) {
-                clear();
+                this.clear();
                 return end;
             } else if (move == 0 && current == -1) {
-                multiply(deltas);
+                this.multiply(deltas);
                 return end;
             } else if (move != 0 && deltas.isEmpty()) {
-                flushCells();
-                emit(InstructionType.SCAN, move, takeMove());
+                this.flushCells();
+                this.emit(InstructionType.SCAN, move, this.takeMove());
                 return end;
             }
         }
 
-        flushCells();
-        loops.push(instructions.size());
-        emit(InstructionType.LOOP_START, -1, takeMove());
+        this.flushCells();
+        this.loops.push(this.instructions.size());
+        this.emit(InstructionType.LOOP_START, -1, this.takeMove());
         return start;
     }
 
     private void endLoop() {
-        flushCells();
-        final int start = loops.pop();
-        final int end = instructions.size();
-        emit(InstructionType.LOOP_END, start, takeMove());
-        instructions.set(start, new Instruction(InstructionType.LOOP_START, end, instructions.get(start).offset()));
+        this.flushCells();
+        final int start = this.loops.pop();
+        final int end = this.instructions.size();
+        this.emit(InstructionType.LOOP_END, start, this.takeMove());
+        this.instructions.set(start, new Instruction(InstructionType.LOOP_START, end, this.instructions.get(start).offset()));
     }
 
     private void multiply(final Map<Integer, Integer> deltas) {
         for (final int target : deltas.keySet()) {
-            flushCell(offset + target);
+            this.flushCell(this.offset + target);
         }
 
-        final int load = instructions.size();
-        emit(InstructionType.LOAD, -1, offset);
+        final int load = this.instructions.size();
+        this.emit(InstructionType.LOAD, -1, this.offset);
         for (final Map.Entry<Integer, Integer> entry : deltas.entrySet()) {
             if (entry.getKey() != 0) {
-                emit(InstructionType.MULTIPLY, entry.getValue(), offset + entry.getKey());
+                this.emit(InstructionType.MULTIPLY, entry.getValue(), this.offset + entry.getKey());
             }
         }
 
-        instructions.set(load, new Instruction(InstructionType.LOAD, instructions.size() - 1, offset));
+        this.instructions.set(load, new Instruction(InstructionType.LOAD, this.instructions.size() - 1, this.offset));
     }
 
     private void flushCell(final int cell) {
-        final CellChange change = pending.remove(cell);
+        final CellChange change = this.pending.remove(cell);
         if (change != null) {
-            emitChange(cell, change);
+            this.emitChange(cell, change);
         }
     }
 
     private void flushCells() {
-        pending.forEach(this::emitChange);
-        pending.clear();
+        this.pending.forEach(this::emitChange);
+        this.pending.clear();
     }
 
     private void flushMove() {
-        if (offset != 0) {
-            emit(InstructionType.MOVE, takeMove(), 0);
+        if (this.offset != 0) {
+            this.emit(InstructionType.MOVE, this.takeMove(), 0);
         }
     }
 
     private int takeMove() {
-        final int move = offset;
-        offset = 0;
+        final int move = this.offset;
+        this.offset = 0;
         return move;
     }
 
     private void emitChange(final int cell, final CellChange change) {
         if (change.set()) {
-            emit(InstructionType.SET, change.value(), cell);
+            this.emit(InstructionType.SET, change.value(), cell);
         } else if (change.value() != 0) {
-            emit(InstructionType.ADD, change.value(), cell);
+            this.emit(InstructionType.ADD, change.value(), cell);
         }
     }
 
     private void emit(final InstructionType type, final int value, final int offset) {
-        instructions.add(new Instruction(type, value, offset));
+        this.instructions.add(new Instruction(type, value, offset));
     }
 
     /**

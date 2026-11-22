@@ -51,9 +51,9 @@ public final class TestPrograms {
     }
 
     public static byte[] run(final Program program, final Memory memory, final byte[] input) throws IOException {
-        final ByteArrayOutputStream out = new ByteArrayOutputStream();
-        program.execute(memory, new ByteArrayInputStream(input), out);
-        return out.toByteArray();
+        final ByteArrayOutputStream output = new ByteArrayOutputStream();
+        program.execute(memory, new ByteArrayInputStream(input), output);
+        return output.toByteArray();
     }
 
     public static byte[] run(final String code, final MemoryType type, final byte[] input) throws IOException {

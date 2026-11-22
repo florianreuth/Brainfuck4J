@@ -32,45 +32,45 @@ public final class DialectConverterDialog extends JDialog {
 
     public DialectConverterDialog(final Frame owner) {
         super(owner, "Dialect Converter", true);
-        setLayout(new BorderLayout());
+        this.setLayout(new BorderLayout());
 
         final JPanel top = new JPanel(new FlowLayout());
         top.add(new JLabel("From:"));
-        top.add(fromBox);
+        top.add(this.fromBox);
         top.add(new JLabel("To:"));
-        top.add(toBox);
+        top.add(this.toBox);
 
         final JButton convertButton = new JButton("Convert");
-        convertButton.addActionListener(e -> convert());
+        convertButton.addActionListener(event -> this.convert());
         top.add(convertButton);
 
         final JButton copyButton = new JButton("Copy Output");
-        copyButton.addActionListener(e -> copyOutput());
+        copyButton.addActionListener(event -> this.copyOutput());
         top.add(copyButton);
-        add(top, BorderLayout.NORTH);
+        this.add(top, BorderLayout.NORTH);
 
-        final JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JScrollPane(inputArea), new JScrollPane(outputArea));
+        final JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, new JScrollPane(this.inputArea), new JScrollPane(this.outputArea));
         split.setResizeWeight(0.5);
-        outputArea.setEditable(false);
-        add(split, BorderLayout.CENTER);
+        this.outputArea.setEditable(false);
+        this.add(split, BorderLayout.CENTER);
 
-        pack();
-        setLocationRelativeTo(owner);
+        this.pack();
+        this.setLocationRelativeTo(owner);
     }
 
     private void convert() {
-        final DialectType from = (DialectType) fromBox.getSelectedItem();
-        final DialectType to = (DialectType) toBox.getSelectedItem();
+        final DialectType from = (DialectType) this.fromBox.getSelectedItem();
+        final DialectType to = (DialectType) this.toBox.getSelectedItem();
         if (from == null || to == null) {
             return;
         }
 
-        final String converted = from.convert(inputArea.getText(), to);
-        outputArea.setText(converted);
+        final String converted = from.convert(this.inputArea.getText(), to);
+        this.outputArea.setText(converted);
     }
 
     private void copyOutput() {
-        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(outputArea.getText()), null);
+        Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new StringSelection(this.outputArea.getText()), null);
     }
 
 }

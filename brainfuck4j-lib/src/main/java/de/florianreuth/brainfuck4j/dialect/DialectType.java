@@ -39,7 +39,7 @@ public enum DialectType {
      * @see Dialect#convert(String, Dialect)
      */
     public String convert(final String input, final DialectType output) {
-        return dialect.convert(input, output.dialect);
+        return this.dialect.convert(input, output.dialect);
     }
 
 }

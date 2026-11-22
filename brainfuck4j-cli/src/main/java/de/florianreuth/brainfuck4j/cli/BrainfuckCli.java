@@ -36,25 +36,25 @@ import java.util.stream.Collectors;
 
 public final class BrainfuckCli {
 
-    public static void main(final String[] args) {
-        if (args.length == 0) {
+    public static void main(final String[] arguments) {
+        if (arguments.length == 0) {
             printUsage();
             return;
         }
 
-        final String[] subArgs = Arrays.copyOfRange(args, 1, args.length);
+        final String[] subArguments = Arrays.copyOfRange(arguments, 1, arguments.length);
         try {
-            final boolean success = switch (args[0]) {
-                case "run" -> run(subArgs);
-                case "convert" -> convert(subArgs);
-                case "export" -> export(subArgs);
-                case "list" -> list(subArgs);
+            final boolean success = switch (arguments[0]) {
+                case "run" -> run(subArguments);
+                case "convert" -> convert(subArguments);
+                case "export" -> export(subArguments);
+                case "list" -> list(subArguments);
                 case "help", "-h", "--help" -> {
                     printUsage();
                     yield true;
                 }
                 default -> {
-                    System.err.println("Unknown command: " + args[0]);
+                    System.err.println("Unknown command: " + arguments[0]);
                     printUsage();
                     yield false;
                 }
@@ -62,9 +62,9 @@ public final class BrainfuckCli {
             if (!success) {
                 System.exit(1);
             }
-        } catch (final Exception e) {
+        } catch (final Exception exception) {
             System.out.flush();
-            System.err.println("Error: " + e.getMessage());
+            System.err.println("Error: " + exception.getMessage());
             System.exit(1);
         }
     }
@@ -90,19 +90,19 @@ public final class BrainfuckCli {
         System.out.println("      List available export languages.");
     }
 
-    private static boolean run(final String[] args) throws Exception {
-        if (args.length < 1) {
+    private static boolean run(final String[] arguments) throws Exception {
+        if (arguments.length < 1) {
             System.err.println("Usage: run <file> [--dialect <name>] [--memory <bits>] [--size <n>] [--boundary error|wrap|grow] [--eof minus-one|zero|unchanged]");
             return false;
         }
 
-        final Path file = Path.of(args[0]);
+        final Path file = Path.of(arguments[0]);
         if (!Files.exists(file)) {
             System.err.println("File does not exist: " + file);
             return false;
         }
 
-        final Map<String, String> options = options(args, 1, "--dialect", "--memory", "--size", "--boundary", "--eof");
+        final Map<String, String> options = options(arguments, 1, "--dialect", "--memory", "--size", "--boundary", "--eof");
         final DialectType dialect = parseEnum(DialectType.class, options.getOrDefault("--dialect", "brainfuck"));
         final MemoryType memoryType = parseMemoryType(options.getOrDefault("--memory", "32"));
         final int memorySize = parseSize(options.getOrDefault("--size", "30000"));
@@ -114,20 +114,20 @@ public final class BrainfuckCli {
         return true;
     }
 
-    private static boolean export(final String[] args) throws Exception {
-        if (args.length < 2) {
+    private static boolean export(final String[] arguments) throws Exception {
+        if (arguments.length < 2) {
             System.err.println("Usage: export <input> <output> [--language <name>] [--dialect <name>] [--memory <bits>] [--size <n>] [--eof minus-one|zero|unchanged]");
             return false;
         }
 
-        final Path input = Path.of(args[0]);
-        final Path output = Path.of(args[1]);
+        final Path input = Path.of(arguments[0]);
+        final Path output = Path.of(arguments[1]);
         if (!Files.exists(input)) {
             System.err.println("Input file does not exist: " + input);
             return false;
         }
 
-        final Map<String, String> options = options(args, 2, "--language", "--dialect", "--memory", "--size", "--eof");
+        final Map<String, String> options = options(arguments, 2, "--language", "--dialect", "--memory", "--size", "--eof");
         final String fileName = output.getFileName().toString();
         final int dot = fileName.lastIndexOf('.');
         final String baseName = dot == -1 ? fileName : fileName.substring(0, dot);
@@ -159,20 +159,20 @@ public final class BrainfuckCli {
         return new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
     }
 
-    private static Map<String, String> options(final String[] args, final int start, final String... allowed) {
+    private static Map<String, String> options(final String[] arguments, final int start, final String... allowed) {
         final List<String> names = List.of(allowed);
         final Map<String, String> options = new HashMap<>();
-        for (int i = start; i < args.length; i++) {
-            final String name = args[i];
+        for (int i = start; i < arguments.length; i++) {
+            final String name = arguments[i];
             if (!names.contains(name)) {
                 throw new IllegalArgumentException("Unknown option: " + name + ", expected one of " + String.join(", ", names));
             }
 
-            if (i + 1 >= args.length) {
+            if (i + 1 >= arguments.length) {
                 throw new IllegalArgumentException("Missing value for option " + name);
             }
 
-            if (options.put(name, args[++i]) != null) {
+            if (options.put(name, arguments[++i]) != null) {
                 throw new IllegalArgumentException("Duplicate option: " + name);
             }
         }
@@ -183,7 +183,7 @@ public final class BrainfuckCli {
     private static int parseSize(final String value) {
         try {
             return Integer.parseInt(value);
-        } catch (final NumberFormatException e) {
+        } catch (final NumberFormatException exception) {
             throw new IllegalArgumentException("Invalid memory size: " + value);
         }
     }
@@ -204,22 +204,22 @@ public final class BrainfuckCli {
     private static <T extends Enum<T>> T parseEnum(final Class<T> type, final String value) {
         try {
             return Enum.valueOf(type, value.toUpperCase().replace('-', '_'));
-        } catch (final IllegalArgumentException e) {
+        } catch (final IllegalArgumentException exception) {
             final String expected = Arrays.stream(type.getEnumConstants()).map(constant -> constant.name().toLowerCase().replace('_', '-')).collect(Collectors.joining(", "));
             throw new IllegalArgumentException("Unknown value: " + value + ", expected one of " + expected);
         }
     }
 
-    private static boolean convert(final String[] args) throws Exception {
-        if (args.length < 4) {
+    private static boolean convert(final String[] arguments) throws Exception {
+        if (arguments.length < 4) {
             System.err.println("Usage: convert <input> <output> --from <dialect> --to <dialect>");
             return false;
         }
 
-        final Path input = Path.of(args[0]);
-        final Path output = Path.of(args[1]);
+        final Path input = Path.of(arguments[0]);
+        final Path output = Path.of(arguments[1]);
 
-        final Map<String, String> options = options(args, 2, "--from", "--to");
+        final Map<String, String> options = options(arguments, 2, "--from", "--to");
         if (!options.containsKey("--from") || !options.containsKey("--to")) {
             System.err.println("Both --from and --to must be specified.");
             return false;
@@ -237,13 +237,13 @@ public final class BrainfuckCli {
         return true;
     }
 
-    private static boolean list(final String[] args) {
-        if (args.length == 0) {
+    private static boolean list(final String[] arguments) {
+        if (arguments.length == 0) {
             System.err.println("Usage: list dialects|memories|languages");
             return false;
         }
 
-        switch (args[0].toLowerCase()) {
+        switch (arguments[0].toLowerCase()) {
             case "dialects" -> {
                 for (final DialectType type : DialectType.values()) {
                     System.out.println(type.name() + " - " + type.name);
@@ -260,7 +260,7 @@ public final class BrainfuckCli {
                 }
             }
             default -> {
-                System.err.println("Unknown list target: " + args[0]);
+                System.err.println("Unknown list target: " + arguments[0]);
                 return false;
             }
         }

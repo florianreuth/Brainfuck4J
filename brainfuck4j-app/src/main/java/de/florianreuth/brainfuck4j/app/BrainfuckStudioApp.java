@@ -79,64 +79,64 @@ public final class BrainfuckStudioApp extends JFrame {
     private SwingWorker<Void, String> currentWorker;
     private TextAreaOutputStream currentOutput;
 
-    public static void main(final String[] args) {
+    public static void main(final String[] arguments) {
         FlatLightLaf.setup();
         SwingUtilities.invokeLater(() -> new BrainfuckStudioApp().setVisible(true));
     }
 
     public BrainfuckStudioApp() {
         super("Brainfuck4J Studio");
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(1100, 700);
-        setLayout(new BorderLayout());
+        this.setDefaultCloseOperation(EXIT_ON_CLOSE);
+        this.setSize(1100, 700);
+        this.setLayout(new BorderLayout());
 
-        editor.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_NONE);
-        editor.setCodeFoldingEnabled(true);
+        this.editor.setSyntaxEditingStyle(SyntaxConstants.SYNTAX_STYLE_NONE);
+        this.editor.setCodeFoldingEnabled(true);
 
-        add(buildTopPanel(), BorderLayout.NORTH);
+        this.add(this.buildTopPanel(), BorderLayout.NORTH);
 
-        final JSplitPane vertical = new JSplitPane(JSplitPane.VERTICAL_SPLIT, buildEditorPane(), buildOutputPane());
+        final JSplitPane vertical = new JSplitPane(JSplitPane.VERTICAL_SPLIT, this.buildEditorPane(), this.buildOutputPane());
         vertical.setResizeWeight(0.5);
-        add(vertical, BorderLayout.CENTER);
+        this.add(vertical, BorderLayout.CENTER);
 
-        add(buildStatusBar(), BorderLayout.SOUTH);
+        this.add(this.buildStatusBar(), BorderLayout.SOUTH);
     }
 
     private JPanel buildTopPanel() {
         final JPanel settings = new JPanel(new FlowLayout(FlowLayout.LEFT));
         settings.add(new JLabel("Dialect:"));
-        settings.add(dialectBox);
+        settings.add(this.dialectBox);
         settings.add(new JLabel("Memory:"));
-        settings.add(memoryBox);
+        settings.add(this.memoryBox);
         settings.add(new JLabel("Size:"));
-        settings.add(memorySizeField);
+        settings.add(this.memorySizeField);
         settings.add(new JLabel("Tape:"));
-        settings.add(boundaryBox);
+        settings.add(this.boundaryBox);
         settings.add(new JLabel("EOF:"));
-        settings.add(endOfInputBox);
+        settings.add(this.endOfInputBox);
 
         final JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        runButton.addActionListener(e -> runProgram());
-        actions.add(runButton);
+        this.runButton.addActionListener(event -> this.runProgram());
+        actions.add(this.runButton);
 
-        stopButton.addActionListener(e -> cancelExecution());
-        stopButton.setEnabled(false);
-        actions.add(stopButton);
+        this.stopButton.addActionListener(event -> this.cancelExecution());
+        this.stopButton.setEnabled(false);
+        actions.add(this.stopButton);
 
         final JButton openButton = new JButton("Open");
-        openButton.addActionListener(e -> openFile());
+        openButton.addActionListener(event -> this.openFile());
         actions.add(openButton);
 
         final JButton saveButton = new JButton("Save");
-        saveButton.addActionListener(e -> saveFile());
+        saveButton.addActionListener(event -> this.saveFile());
         actions.add(saveButton);
 
         final JButton convertButton = new JButton("Convert...");
-        convertButton.addActionListener(e -> new DialectConverterDialog(this).setVisible(true));
+        convertButton.addActionListener(event -> new DialectConverterDialog(this).setVisible(true));
         actions.add(convertButton);
 
         final JButton exportButton = new JButton("Export...");
-        exportButton.addActionListener(e -> exportProgram());
+        exportButton.addActionListener(event -> this.exportProgram());
         actions.add(exportButton);
 
         // Two rows since a single FlowLayout row in BorderLayout.NORTH hides wrapped components at the default width
@@ -147,19 +147,19 @@ public final class BrainfuckStudioApp extends JFrame {
     }
 
     private Component buildEditorPane() {
-        final JSplitPane editorSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, new RTextScrollPane(editor), new JScrollPane(inputArea));
+        final JSplitPane editorSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, new RTextScrollPane(this.editor), new JScrollPane(this.inputArea));
         editorSplit.setResizeWeight(0.8);
-        inputArea.setBorder(BorderFactory.createTitledBorder("Input Stream (optional)"));
+        this.inputArea.setBorder(BorderFactory.createTitledBorder("Input Stream (optional)"));
         return editorSplit;
     }
 
     private Component buildOutputPane() {
         final JPanel panel = new JPanel(new BorderLayout());
-        outputArea.setEditable(false);
-        outputArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-        panel.add(new JScrollPane(outputArea), BorderLayout.CENTER);
+        this.outputArea.setEditable(false);
+        this.outputArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+        panel.add(new JScrollPane(this.outputArea), BorderLayout.CENTER);
 
-        final JTable instructionsTable = new JTable(instructionsModel);
+        final JTable instructionsTable = new JTable(this.instructionsModel);
         instructionsTable.setFillsViewportHeight(true);
 
         final JScrollPane tableScroll = new JScrollPane(instructionsTable);
@@ -171,41 +171,41 @@ public final class BrainfuckStudioApp extends JFrame {
 
     private JPanel buildStatusBar() {
         final JPanel status = new JPanel(new BorderLayout());
-        status.add(statusLabel, BorderLayout.CENTER);
+        status.add(this.statusLabel, BorderLayout.CENTER);
         return status;
     }
 
     private void runProgram() {
-        if (currentWorker != null) {
+        if (this.currentWorker != null) {
             return;
         }
 
-        outputArea.setText("");
-        instructionsModel.setInstructions(List.of());
-        statusLabel.setText("Running...");
-        runButton.setEnabled(false);
-        stopButton.setEnabled(true);
+        this.outputArea.setText("");
+        this.instructionsModel.setInstructions(List.of());
+        this.statusLabel.setText("Running...");
+        this.runButton.setEnabled(false);
+        this.stopButton.setEnabled(true);
 
-        final String program = normalizedProgram();
-        final Memory memory = new Memory(selectedMemoryType(), selectedMemorySize(), (TapeBoundary) boundaryBox.getSelectedItem(), (EndOfInput) endOfInputBox.getSelectedItem());
-        final byte[] stdin = inputArea.getText().getBytes(StandardCharsets.UTF_8);
-        final TextAreaOutputStream output = new TextAreaOutputStream(outputArea);
-        currentOutput = output;
-        currentWorker = new SwingWorker<>() {
+        final String program = this.normalizedProgram();
+        final Memory memory = new Memory(this.selectedMemoryType(), this.selectedMemorySize(), (TapeBoundary) this.boundaryBox.getSelectedItem(), (EndOfInput) this.endOfInputBox.getSelectedItem());
+        final byte[] input = this.inputArea.getText().getBytes(StandardCharsets.UTF_8);
+        final TextAreaOutputStream output = new TextAreaOutputStream(this.outputArea);
+        this.currentOutput = output;
+        this.currentWorker = new SwingWorker<>() {
             private List<Instruction> instructions;
-            private long elapsedMillis;
+            private long elapsedMilliseconds;
 
             @Override
             protected Void doInBackground() {
                 try {
-                    final long start = System.currentTimeMillis();
+                    final long startMilliseconds = System.currentTimeMillis();
                     final Program compiled = Brainfuck4J.compile(program);
-                    compiled.execute(memory, new ByteArrayInputStream(stdin), output);
-                    instructions = compiled.instructions();
-                    elapsedMillis = System.currentTimeMillis() - start;
+                    compiled.execute(memory, new ByteArrayInputStream(input), output);
+                    this.instructions = compiled.instructions();
+                    this.elapsedMilliseconds = System.currentTimeMillis() - startMilliseconds;
                 } catch (final Throwable throwable) {
-                    if (!isCancelled()) {
-                        publish("\n[ERROR] " + throwable.getMessage());
+                    if (!this.isCancelled()) {
+                        this.publish("\n[ERROR] " + throwable.getMessage());
                     }
                 }
 
@@ -215,50 +215,50 @@ public final class BrainfuckStudioApp extends JFrame {
             @Override
             protected void process(final List<String> chunks) {
                 for (final String chunk : chunks) {
-                    outputArea.append(chunk);
+                    BrainfuckStudioApp.this.outputArea.append(chunk);
                 }
             }
 
             @Override
             protected void done() {
                 // A cancelled worker was already reset and must not touch the state of a newer run
-                if (isCancelled()) {
+                if (this.isCancelled()) {
                     return;
                 }
 
-                resetExecutionState();
-                if (instructions != null) {
-                    instructionsModel.setInstructions(instructions);
-                    statusLabel.setText("Finished in " + elapsedMillis + " ms | Instructions: " + instructions.size());
+                BrainfuckStudioApp.this.resetExecutionState();
+                if (this.instructions != null) {
+                    BrainfuckStudioApp.this.instructionsModel.setInstructions(this.instructions);
+                    BrainfuckStudioApp.this.statusLabel.setText("Finished in " + this.elapsedMilliseconds + " ms | Instructions: " + this.instructions.size());
                 } else {
-                    statusLabel.setText("Execution finished with errors");
+                    BrainfuckStudioApp.this.statusLabel.setText("Execution finished with errors");
                 }
             }
         };
-        currentWorker.execute();
+        this.currentWorker.execute();
     }
 
     private void cancelExecution() {
-        if (currentWorker != null) {
-            currentWorker.cancel(true);
-            resetExecutionState();
-            statusLabel.setText("Execution cancelled");
+        if (this.currentWorker != null) {
+            this.currentWorker.cancel(true);
+            this.resetExecutionState();
+            this.statusLabel.setText("Execution cancelled");
         }
     }
 
     private void resetExecutionState() {
-        if (currentOutput != null) {
-            currentOutput.close();
-            currentOutput = null;
+        if (this.currentOutput != null) {
+            this.currentOutput.close();
+            this.currentOutput = null;
         }
 
-        runButton.setEnabled(true);
-        stopButton.setEnabled(false);
-        currentWorker = null;
+        this.runButton.setEnabled(true);
+        this.stopButton.setEnabled(false);
+        this.currentWorker = null;
     }
 
     private void exportProgram() {
-        if (boundaryBox.getSelectedItem() != TapeBoundary.ERROR) {
+        if (this.boundaryBox.getSelectedItem() != TapeBoundary.ERROR) {
             JOptionPane.showMessageDialog(this, "Exported programs only support the ERROR tape boundary.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -278,31 +278,31 @@ public final class BrainfuckStudioApp extends JFrame {
         final String fileName = path.getFileName().toString();
         final int dot = fileName.lastIndexOf('.');
         try {
-            final Program program = Brainfuck4J.compile(normalizedProgram());
-            final String source = language.export(program, selectedMemoryType(), selectedMemorySize(), (EndOfInput) endOfInputBox.getSelectedItem(), dot == -1 ? fileName : fileName.substring(0, dot));
+            final Program program = Brainfuck4J.compile(this.normalizedProgram());
+            final String source = language.export(program, this.selectedMemoryType(), this.selectedMemorySize(), (EndOfInput) this.endOfInputBox.getSelectedItem(), dot == -1 ? fileName : fileName.substring(0, dot));
             Files.writeString(path, source);
-            statusLabel.setText("Exported " + language.name + " to " + path);
-        } catch (final IOException | IllegalArgumentException e) {
-            JOptionPane.showMessageDialog(this, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            this.statusLabel.setText("Exported " + language.name + " to " + path);
+        } catch (final IOException | IllegalArgumentException exception) {
+            JOptionPane.showMessageDialog(this, exception.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private String normalizedProgram() {
-        final DialectType dialect = (DialectType) dialectBox.getSelectedItem();
-        final String program = editor.getText();
+        final DialectType dialect = (DialectType) this.dialectBox.getSelectedItem();
+        final String program = this.editor.getText();
         return dialect == null || dialect == DialectType.BRAINFUCK ? program : dialect.convert(program, DialectType.BRAINFUCK);
     }
 
     private MemoryType selectedMemoryType() {
-        final MemoryType memoryType = (MemoryType) memoryBox.getSelectedItem();
+        final MemoryType memoryType = (MemoryType) this.memoryBox.getSelectedItem();
         return memoryType == null ? MemoryType.BIT_32 : memoryType;
     }
 
     private int selectedMemorySize() {
         try {
-            final int size = Integer.parseInt(memorySizeField.getText().trim());
+            final int size = Integer.parseInt(this.memorySizeField.getText().trim());
             return size > 0 ? size : DEFAULT_MEMORY_SIZE;
-        } catch (final NumberFormatException e) {
+        } catch (final NumberFormatException exception) {
             return DEFAULT_MEMORY_SIZE;
         }
     }
@@ -313,9 +313,9 @@ public final class BrainfuckStudioApp extends JFrame {
             final Path path = chooser.getSelectedFile().toPath();
             try {
                 // Comments may contain arbitrary bytes, the String constructor replaces malformed UTF-8 instead of throwing like Files#readString
-                editor.setText(new String(Files.readAllBytes(path), StandardCharsets.UTF_8));
-            } catch (final IOException e) {
-                JOptionPane.showMessageDialog(this, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                this.editor.setText(new String(Files.readAllBytes(path), StandardCharsets.UTF_8));
+            } catch (final IOException exception) {
+                JOptionPane.showMessageDialog(this, exception.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -325,9 +325,9 @@ public final class BrainfuckStudioApp extends JFrame {
         if (chooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             final Path path = chooser.getSelectedFile().toPath();
             try {
-                Files.writeString(path, editor.getText());
-            } catch (final IOException e) {
-                JOptionPane.showMessageDialog(this, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+                Files.writeString(path, this.editor.getText());
+            } catch (final IOException exception) {
+                JOptionPane.showMessageDialog(this, exception.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
