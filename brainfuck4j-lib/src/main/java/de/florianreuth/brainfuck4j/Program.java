@@ -19,6 +19,7 @@ package de.florianreuth.brainfuck4j;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InterruptedIOException;
 import java.io.OutputStream;
 import java.util.List;
 
@@ -38,6 +39,7 @@ public final class Program {
     private static final int OP_SCAN = 7;
     private static final int OP_OUTPUT = 8;
     private static final int OP_INPUT = 9;
+    private static final int CHECK_INTERVAL = 1 << 16;
 
     private final List<Instruction> instructions;
     private final int[] ops;
@@ -111,16 +113,26 @@ public final class Program {
     }
 
     /**
+     * Executes this program without limits, see {@link #execute(Memory, InputStream, OutputStream, ExecutionLimits)}.
+     */
+    public void execute(final Memory memory, final InputStream in, final OutputStream out) throws IOException {
+        execute(memory, in, out, ExecutionLimits.NONE);
+    }
+
+    /**
      * Executes this program, blocking until it finishes, the memory keeps its state afterward.
      *
      * @param memory The memory to execute on, must not be shared with a concurrent execution.
      * @param in     Input stream, read byte-wise, see {@link Memory#endOfInput()} for the end of stream.
      * @param out    Output stream, buffered and flushed on newline, before input and when finished.
+     * @param limits The resource limits of this execution.
      * @throws IOException               If reading or writing fails.
-     * @throws IndexOutOfBoundsException If a cell outside the memory is accessed and {@link Memory#boundary()} is {@link TapeBoundary#ERROR}.
+     * @throws InterruptedIOException    If the executing thread is interrupted, checked every few thousand loop iterations.
+     * @throws IndexOutOfBoundsException If a cell outside the memory is accessed with {@link TapeBoundary#ERROR}, or growing exceeds {@link ExecutionLimits#maxCells()}.
+     * @throws IllegalStateException     If {@link ExecutionLimits#maxIterations()} is exceeded.
      * @throws IllegalArgumentException  If the memory wraps and is not larger than {@link #span()}.
      */
-    public void execute(final Memory memory, final InputStream in, final OutputStream out) throws IOException {
+    public void execute(final Memory memory, final InputStream in, final OutputStream out, final ExecutionLimits limits) throws IOException {
         // Offset folding assumes distinct offsets are distinct cells, which a wrapping memory only guarantees above the span
         if (memory.boundary() == TapeBoundary.WRAP && memory.size() <= span) {
             throw new IllegalArgumentException("A wrapping memory needs more than " + span + " cells for this program, got " + memory.size());
@@ -139,6 +151,10 @@ public final class Program {
         int p = memory.pointer();
         int pc = 0;
         int factor = 0;
+        // Iterations are handed out in chunks so the hot path only decrements an int on loop back-edges, the budget ends on the first iteration over the limit
+        final long budget = limits.maxIterations() == Long.MAX_VALUE ? Long.MAX_VALUE : limits.maxIterations() + 1;
+        int tick = (int) Math.min(CHECK_INTERVAL, budget);
+        long left = budget - tick;
         try {
             while (pc < length) {
                 // Every instruction faults before its first side effect, so it can be retried or replayed after a boundary violation
@@ -163,6 +179,10 @@ public final class Program {
                                 final int next = p + offsets[pc];
                                 if (mem[next] != 0) {
                                     pc = values[pc];
+                                    if (--tick == 0) {
+                                        tick = checkpoint(left, limits);
+                                        left -= tick;
+                                    }
                                 }
 
                                 p = next;
@@ -213,7 +233,7 @@ public final class Program {
                     }
 
                     if (boundary == TapeBoundary.GROW) {
-                        p += memory.grow(index);
+                        p += memory.grow(index, limits.maxCells());
                         mem = memory.cells();
                         continue;
                     }
@@ -237,6 +257,10 @@ public final class Program {
                             p = i;
                             if (mem[p] != 0) {
                                 pc = values[pc];
+                                if (--tick == 0) {
+                                    tick = checkpoint(left, limits);
+                                    left -= tick;
+                                }
                             }
                         }
                         case OP_LOAD -> {
@@ -252,6 +276,11 @@ public final class Program {
                             int next = i;
                             while (mem[next] != 0) {
                                 next = Math.floorMod(next + values[pc], mem.length);
+                                // A wrapping scan without zero cell never ends, so it has to stay interruptible
+                                if (--tick == 0) {
+                                    tick = checkpoint(left, limits);
+                                    left -= tick;
+                                }
                             }
 
                             p = next;
@@ -276,6 +305,18 @@ public final class Program {
             memory.pointer(p);
             flush(out, buffer, buffered);
         }
+    }
+
+    private static int checkpoint(final long left, final ExecutionLimits limits) throws InterruptedIOException {
+        if (Thread.interrupted()) {
+            throw new InterruptedIOException("Execution interrupted");
+        }
+
+        if (left == 0) {
+            throw new IllegalStateException("Loop iteration limit of " + limits.maxIterations() + " exceeded");
+        }
+
+        return (int) Math.min(CHECK_INTERVAL, left);
     }
 
     private static int scanEnd(final int[] mem, final int start, final int step) {

@@ -108,35 +108,39 @@ public final class Memory {
      *
      * @param index An index relative to the current cells, may be negative.
      * @return The amount all existing indices including the pointer were shifted by, positive when grown to the left.
-     * @throws OutOfMemoryError If the required size exceeds the maximum array size.
+     * @throws IndexOutOfBoundsException If the required size exceeds the maximum array size.
      */
     public int grow(final int index) {
+        return grow(index, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Grows the memory with zeroed cells so the given index becomes valid, independent of {@link #boundary()}.
+     *
+     * @param index   An index relative to the current cells, may be negative.
+     * @param maxSize The maximum number of cells after growing.
+     * @return The amount all existing indices including the pointer were shifted by, positive when grown to the left.
+     * @throws IndexOutOfBoundsException If the required size exceeds maxSize or the maximum array size.
+     */
+    public int grow(final int index, final int maxSize) {
         if (index >= 0 && index < cells.length) {
             return 0;
         }
 
-        if (index < 0) {
-            final int shift = (int) Math.min(MAX_SIZE - (long) cells.length, Math.max(cells.length, -(long) index));
-            if (shift < -(long) index) {
-                throw new OutOfMemoryError("Memory can not grow beyond " + MAX_SIZE + " cells");
-            }
-
-            final int[] grown = new int[cells.length + shift];
-            System.arraycopy(cells, 0, grown, shift, cells.length);
-            cells = grown;
-            origin += shift;
-            pointer += shift;
-            return shift;
+        final long limit = Math.min(maxSize, MAX_SIZE);
+        final long required = index < 0 ? cells.length - (long) index : index + 1L;
+        if (required > limit) {
+            throw new IndexOutOfBoundsException("Memory can not grow beyond " + limit + " cells to reach cell " + index);
         }
 
-        if (index >= MAX_SIZE) {
-            throw new OutOfMemoryError("Memory can not grow beyond " + MAX_SIZE + " cells");
-        }
-
-        final int[] grown = new int[(int) Math.min(MAX_SIZE, Math.max(2L * cells.length, index + 1L))];
-        System.arraycopy(cells, 0, grown, 0, cells.length);
+        final int size = (int) Math.min(limit, Math.max(2L * cells.length, required));
+        final int[] grown = new int[size];
+        final int shift = index < 0 ? size - cells.length : 0;
+        System.arraycopy(cells, 0, grown, shift, cells.length);
         cells = grown;
-        return 0;
+        origin += shift;
+        pointer += shift;
+        return shift;
     }
 
 }

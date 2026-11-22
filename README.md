@@ -155,6 +155,7 @@ System.out.println("Optimized instructions: " + program.instructions().size());
 - `MemoryType` and `Memory` implement the memory model (8/16/32-bit cells, size, pointer state).
 - `TapeBoundary` defines out of bounds behavior: `ERROR` (default), `WRAP` (needs more cells than `Program#span`) or `GROW`.
 - `EndOfInput` defines the value read at the end of input: `MINUS_ONE` (default), `ZERO` or `UNCHANGED`.
+- `ExecutionLimits` optionally bounds loop iterations and memory growth of an execution, which is also interruptible via `Thread#interrupt`.
 - `DialectType` and `Dialect` handle multi-dialect support and conversion.
 - `ExportLanguage` exports a `Program` as standalone C (unsigned cells, no bounds checks) or Java source file, the end of input behavior is supported, the tape boundary always behaves like `ERROR` (unchecked in C).
 
