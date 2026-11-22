@@ -305,7 +305,8 @@ public final class BrainfuckStudioApp extends JFrame {
         if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             final Path path = chooser.getSelectedFile().toPath();
             try {
-                editor.setText(Files.readString(path));
+                // Comments may contain arbitrary bytes, the String constructor replaces malformed UTF-8 instead of throwing like Files#readString
+                editor.setText(new String(Files.readAllBytes(path), StandardCharsets.UTF_8));
             } catch (final IOException e) {
                 JOptionPane.showMessageDialog(this, e.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
