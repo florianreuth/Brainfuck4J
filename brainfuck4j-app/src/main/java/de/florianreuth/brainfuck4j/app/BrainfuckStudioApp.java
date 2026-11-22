@@ -32,6 +32,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.GridLayout;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -102,40 +103,46 @@ public final class BrainfuckStudioApp extends JFrame {
     }
 
     private JPanel buildTopPanel() {
-        final JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        panel.add(new JLabel("Dialect:"));
-        panel.add(dialectBox);
-        panel.add(new JLabel("Memory:"));
-        panel.add(memoryBox);
-        panel.add(new JLabel("Size:"));
-        panel.add(memorySizeField);
-        panel.add(new JLabel("Tape:"));
-        panel.add(boundaryBox);
-        panel.add(new JLabel("EOF:"));
-        panel.add(endOfInputBox);
+        final JPanel settings = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        settings.add(new JLabel("Dialect:"));
+        settings.add(dialectBox);
+        settings.add(new JLabel("Memory:"));
+        settings.add(memoryBox);
+        settings.add(new JLabel("Size:"));
+        settings.add(memorySizeField);
+        settings.add(new JLabel("Tape:"));
+        settings.add(boundaryBox);
+        settings.add(new JLabel("EOF:"));
+        settings.add(endOfInputBox);
 
+        final JPanel actions = new JPanel(new FlowLayout(FlowLayout.LEFT));
         runButton.addActionListener(e -> runProgram());
-        panel.add(runButton);
+        actions.add(runButton);
 
         stopButton.addActionListener(e -> cancelExecution());
         stopButton.setEnabled(false);
-        panel.add(stopButton);
+        actions.add(stopButton);
 
         final JButton openButton = new JButton("Open");
         openButton.addActionListener(e -> openFile());
-        panel.add(openButton);
+        actions.add(openButton);
 
         final JButton saveButton = new JButton("Save");
         saveButton.addActionListener(e -> saveFile());
-        panel.add(saveButton);
+        actions.add(saveButton);
 
         final JButton convertButton = new JButton("Convert...");
         convertButton.addActionListener(e -> new DialectConverterDialog(this).setVisible(true));
-        panel.add(convertButton);
+        actions.add(convertButton);
 
         final JButton exportButton = new JButton("Export...");
         exportButton.addActionListener(e -> exportProgram());
-        panel.add(exportButton);
+        actions.add(exportButton);
+
+        // Two rows since a single FlowLayout row in BorderLayout.NORTH hides wrapped components at the default width
+        final JPanel panel = new JPanel(new GridLayout(2, 1));
+        panel.add(settings);
+        panel.add(actions);
         return panel;
     }
 
