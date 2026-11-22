@@ -25,9 +25,13 @@ import de.florianreuth.brainfuck4j.TapeBoundary;
 import de.florianreuth.brainfuck4j.dialect.DialectType;
 import de.florianreuth.brainfuck4j.export.ExportLanguage;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public final class BrainfuckCli {
@@ -98,26 +102,12 @@ public final class BrainfuckCli {
             return false;
         }
 
-        DialectType dialect = DialectType.BRAINFUCK;
-        MemoryType memoryType = MemoryType.BIT_32;
-        int memorySize = 30000;
-        TapeBoundary boundary = TapeBoundary.ERROR;
-        EndOfInput endOfInput = EndOfInput.MINUS_ONE;
-
-        for (int i = 1; i < args.length; i++) {
-            final String opt = args[i];
-            if ("--dialect".equals(opt) && i + 1 < args.length) {
-                dialect = parseEnum(DialectType.class, args[++i]);
-            } else if ("--memory".equals(opt) && i + 1 < args.length) {
-                memoryType = parseMemoryType(args[++i]);
-            } else if ("--size".equals(opt) && i + 1 < args.length) {
-                memorySize = Integer.parseInt(args[++i]);
-            } else if ("--boundary".equals(opt) && i + 1 < args.length) {
-                boundary = parseEnum(TapeBoundary.class, args[++i]);
-            } else if ("--eof".equals(opt) && i + 1 < args.length) {
-                endOfInput = parseEnum(EndOfInput.class, args[++i]);
-            }
-        }
+        final Map<String, String> options = options(args, 1, "--dialect", "--memory", "--size", "--boundary", "--eof");
+        final DialectType dialect = parseEnum(DialectType.class, options.getOrDefault("--dialect", "brainfuck"));
+        final MemoryType memoryType = parseMemoryType(options.getOrDefault("--memory", "32"));
+        final int memorySize = parseSize(options.getOrDefault("--size", "30000"));
+        final TapeBoundary boundary = parseEnum(TapeBoundary.class, options.getOrDefault("--boundary", "error"));
+        final EndOfInput endOfInput = parseEnum(EndOfInput.class, options.getOrDefault("--eof", "minus-one"));
 
         final Memory memory = new Memory(memoryType, memorySize, boundary, endOfInput);
         Brainfuck4J.compile(read(file, dialect)).execute(memory, System.in, System.out);
@@ -137,29 +127,17 @@ public final class BrainfuckCli {
             return false;
         }
 
+        final Map<String, String> options = options(args, 2, "--language", "--dialect", "--memory", "--size", "--eof");
         final String fileName = output.getFileName().toString();
         final int dot = fileName.lastIndexOf('.');
         final String baseName = dot == -1 ? fileName : fileName.substring(0, dot);
-        ExportLanguage language = dot == -1 ? null : ExportLanguage.byExtension(fileName.substring(dot + 1));
-        DialectType dialect = DialectType.BRAINFUCK;
-        MemoryType memoryType = MemoryType.BIT_32;
-        int memorySize = 30000;
-        EndOfInput endOfInput = EndOfInput.MINUS_ONE;
-
-        for (int i = 2; i < args.length; i++) {
-            final String opt = args[i];
-            if ("--language".equals(opt) && i + 1 < args.length) {
-                language = parseEnum(ExportLanguage.class, args[++i]);
-            } else if ("--dialect".equals(opt) && i + 1 < args.length) {
-                dialect = parseEnum(DialectType.class, args[++i]);
-            } else if ("--memory".equals(opt) && i + 1 < args.length) {
-                memoryType = parseMemoryType(args[++i]);
-            } else if ("--size".equals(opt) && i + 1 < args.length) {
-                memorySize = Integer.parseInt(args[++i]);
-            } else if ("--eof".equals(opt) && i + 1 < args.length) {
-                endOfInput = parseEnum(EndOfInput.class, args[++i]);
-            }
-        }
+        final ExportLanguage language = options.containsKey("--language")
+            ? parseEnum(ExportLanguage.class, options.get("--language"))
+            : dot == -1 ? null : ExportLanguage.byExtension(fileName.substring(dot + 1));
+        final DialectType dialect = parseEnum(DialectType.class, options.getOrDefault("--dialect", "brainfuck"));
+        final MemoryType memoryType = parseMemoryType(options.getOrDefault("--memory", "32"));
+        final int memorySize = parseSize(options.getOrDefault("--size", "30000"));
+        final EndOfInput endOfInput = parseEnum(EndOfInput.class, options.getOrDefault("--eof", "minus-one"));
 
         if (language == null) {
             System.err.println("Unknown output extension, specify --language.");
@@ -172,8 +150,42 @@ public final class BrainfuckCli {
     }
 
     private static String read(final Path file, final DialectType dialect) throws Exception {
-        final String source = Files.readString(file);
+        final String source = readSource(file);
         return dialect == DialectType.BRAINFUCK ? source : dialect.convert(source, DialectType.BRAINFUCK);
+    }
+
+    private static String readSource(final Path file) throws Exception {
+        // Comments may contain arbitrary bytes, the String constructor replaces malformed UTF-8 instead of throwing like Files#readString
+        return new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+    }
+
+    private static Map<String, String> options(final String[] args, final int start, final String... allowed) {
+        final List<String> names = List.of(allowed);
+        final Map<String, String> options = new HashMap<>();
+        for (int i = start; i < args.length; i++) {
+            final String name = args[i];
+            if (!names.contains(name)) {
+                throw new IllegalArgumentException("Unknown option: " + name + ", expected one of " + String.join(", ", names));
+            }
+
+            if (i + 1 >= args.length) {
+                throw new IllegalArgumentException("Missing value for option " + name);
+            }
+
+            if (options.put(name, args[++i]) != null) {
+                throw new IllegalArgumentException("Duplicate option: " + name);
+            }
+        }
+
+        return options;
+    }
+
+    private static int parseSize(final String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (final NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid memory size: " + value);
+        }
     }
 
     private static MemoryType parseMemoryType(final String value) {
@@ -207,19 +219,8 @@ public final class BrainfuckCli {
         final Path input = Path.of(args[0]);
         final Path output = Path.of(args[1]);
 
-        DialectType from = null;
-        DialectType to = null;
-
-        for (int i = 2; i < args.length; i++) {
-            final String opt = args[i];
-            if ("--from".equals(opt) && i + 1 < args.length) {
-                from = parseEnum(DialectType.class, args[++i]);
-            } else if ("--to".equals(opt) && i + 1 < args.length) {
-                to = parseEnum(DialectType.class, args[++i]);
-            }
-        }
-
-        if (from == null || to == null) {
+        final Map<String, String> options = options(args, 2, "--from", "--to");
+        if (!options.containsKey("--from") || !options.containsKey("--to")) {
             System.err.println("Both --from and --to must be specified.");
             return false;
         }
@@ -229,14 +230,16 @@ public final class BrainfuckCli {
             return false;
         }
 
-        Files.writeString(output, from.convert(Files.readString(input), to));
+        final DialectType from = parseEnum(DialectType.class, options.get("--from"));
+        final DialectType to = parseEnum(DialectType.class, options.get("--to"));
+        Files.writeString(output, from.convert(readSource(input), to));
         System.out.println("Converted " + input + " -> " + output);
         return true;
     }
 
     private static boolean list(final String[] args) {
         if (args.length == 0) {
-            System.err.println("Usage: list dialects|memories");
+            System.err.println("Usage: list dialects|memories|languages");
             return false;
         }
 
