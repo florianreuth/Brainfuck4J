@@ -39,7 +39,7 @@ tasks.withType<Javadoc>().configureEach {
 
 tasks.jar {
     val projectName = project.name
-    from("LICENSE") {
+    from(rootDir.resolve("LICENSE")) {
         rename {
             "LICENSE_$projectName"
         }

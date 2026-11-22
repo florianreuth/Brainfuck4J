@@ -7,3 +7,7 @@ plugins {
 }
 
 rootProject.name = "brainfuck4j"
+
+include("brainfuck4j-lib")
+include("brainfuck4j-cli")
+include("brainfuck4j-app")

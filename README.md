@@ -13,62 +13,68 @@ Learn more about Brainfuck [here](https://en.wikipedia.org/wiki/Brainfuck)
 
 ## Features
 
-- Fast interpreter with multiple dialects
-- Dialect converter
-- Swing-based GUI
-- Executable JAR with command line interface
-- Optimizations (clear loops, pre-calculating loop points, instruction batching)
+- Fast optimizing interpreter (offset folding of pointer moves, instruction batching, clear/multiplication/scan loops,
+  pre-calculated loop points, buffered output)
+- Multiple dialects and a dialect converter
+- Export of programs as standalone C or Java source files
+- Swing-based GUI (Brainfuck Studio)
+- Command line interface
+
+## Modules
+
+| Module            | Contents                                                       |
+|-------------------|----------------------------------------------------------------|
+| `brainfuck4j-lib` | Interpreter and dialects, no dependencies, published to Maven  |
+| `brainfuck4j-cli` | Executable command line interface                              |
+| `brainfuck4j-app` | Executable Swing GUI                                           |
+
+The CLI and app JARs contain all their dependencies and can be run directly.
 
 ## Usage
 
-### CLI & GUI
-
-If you run the packaged JAR directly, you get both CLI and GUI entry points:
+### GUI
 
 ```bash
-java -jar Brainfuck4J-<version>.jar            # GUI (Brainfuck Studio)
-java -jar Brainfuck4J-<version>.jar run ...    # CLI
+java -jar brainfuck4j-app-<version>.jar
 ```
 
 ![GUI](/.github/media/gui.png)
 
-When using the Gradle project directly you can run:
-
-```bash
-./gradlew run                                  # GUI (no args)
-./gradlew run --args="run program.bf"          # CLI
-```
-
-#### CLI commands
+### CLI
 
 ![CLI](/.github/media/cli.png)
 
 Examples:
 
 ```bash
-# Run a Brainfuck file with defaults (BRAINFUCK dialect, INTEGER memory, 30000 cells)
-java -jar Brainfuck4J-<version>.jar run hello.bf
+# Run a Brainfuck file with defaults (BRAINFUCK dialect, 32-bit cells, 30000 cells), using stdin/stdout
+java -jar brainfuck4j-cli-<version>.jar run hello.bf
 
 # Run with explicit dialect and memory settings
-java -jar Brainfuck4J-<version>.jar run hello.bf --dialect BRAINFUCK --memory INTEGER --size 60000
+java -jar brainfuck4j-cli-<version>.jar run hello.bf --dialect BRAINFUCK --memory 32 --size 60000
 
 # Convert between dialects
-java -jar Brainfuck4J-<version>.jar convert input.bf output.troll --from BRAINFUCK --to TROLLSCRIPT
+java -jar brainfuck4j-cli-<version>.jar convert input.bf output.troll --from BRAINFUCK --to TROLLSCRIPT
 
-# List supported dialects and memory types
-java -jar Brainfuck4J-<version>.jar list dialects
-java -jar Brainfuck4J-<version>.jar list memories
+# Export as standalone C or Java source, the language is taken from the output extension (or --language)
+java -jar brainfuck4j-cli-<version>.jar export hello.bf Hello.java --memory 8
+java -jar brainfuck4j-cli-<version>.jar export hello.bf hello.c
+
+# List supported dialects, memory types and export languages
+java -jar brainfuck4j-cli-<version>.jar list dialects
+java -jar brainfuck4j-cli-<version>.jar list memories
+java -jar brainfuck4j-cli-<version>.jar list languages
 ```
 
 ### Use in Gradle
 
-If you want to depend on Brainfuck4J in your own project, use the Maven repository here:
+If you want to depend on Brainfuck4J in your own project, use the `brainfuck4j-lib` artifact from the Maven repository here:
 
-https://mvnrepository.com/artifact/de.florianreuth/brainfuck4j
+https://mvnrepository.com/artifact/de.florianreuth/brainfuck4j-lib
 
 or
 
-https://maven.florianreuth.de/#/snapshots/de/florianreuth/brainfuck4j (for snapshots)
+https://maven.florianreuth.de/#/snapshots/de/florianreuth/brainfuck4j-lib (for snapshots)
 
 The repository page includes the latest coordinates and setup instructions.
 
@@ -103,65 +109,46 @@ final Dialect customDialect = new Dialect(
         ",", // input
         "."  // output
 );
+final String converted = customDialect.convert("...", DialectType.BRAINFUCK.dialect);
 ```
 
 #### Execute Brainfuck code (library API)
 
-The main entry point is the singleton `Brainfuck4J.INSTANCE`. You supply input/output streams, a memory implementation
-and the (optionally pre-converted) program:
+`Brainfuck4J.compile` turns the (optionally pre-converted) source into a `Program`, which is executed on a `Memory` with
+input/output streams:
 
 ```java
 import de.florianreuth.brainfuck4j.Brainfuck4J;
-import de.florianreuth.brainfuck4j.dialect.DialectType;
-import de.florianreuth.brainfuck4j.memory.AbstractMemory;
-import de.florianreuth.brainfuck4j.memory.MemoryType;
-import de.florianreuth.brainfuck4j.instruction.Instruction;
+import de.florianreuth.brainfuck4j.Memory;
+import de.florianreuth.brainfuck4j.MemoryType;
+import de.florianreuth.brainfuck4j.Program;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
-import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
-// Original program in an arbitrary dialect
-final String source = ">++++++[<++++++>-]<.";
-final DialectType dialect = DialectType.BRAINFUCK;
+// Compile once, throws IllegalArgumentException on unbalanced loops
+final Program program = Brainfuck4J.compile(">++++++[<++++++>-]<.");
 
-// Normalize to pure Brainfuck if needed
-String program = source;
-if (dialect != DialectType.BRAINFUCK) {
-    program = dialect.convert(source, DialectType.BRAINFUCK);
-}
+// Choose cell width (BIT_8, BIT_16, BIT_32) and size
+final Memory memory = MemoryType.BIT_32.create(30000);
 
-// Optional input for the Brainfuck program
-final byte[] inputBytes = new byte[0];
-final InputStream in = new ByteArrayInputStream(inputBytes);
+// Execute, throws IndexOutOfBoundsException if the program leaves the memory
+final ByteArrayOutputStream out = new ByteArrayOutputStream(); // or System.out
+program.execute(memory, new ByteArrayInputStream(new byte[0]), out);
 
-// Capture the output in memory (you can also pass System.out)
-final ByteArrayOutputStream outBuffer = new ByteArrayOutputStream();
-final PrintStream out = new PrintStream(outBuffer, true, StandardCharsets.UTF_8);
-
-// Choose memory type and size
-final MemoryType memoryType = MemoryType.INTEGER; // or BYTE, SHORT, ...
-final int memorySize = 30000;
-final AbstractMemory memory = memoryType.create(memorySize);
-
-// Run the program and get the optimized instruction list
-final List<Instruction> instructions = Brainfuck4J.INSTANCE.run(in, out, memory, program);
-
-// Read output as string
-final String output = outBuffer.toString(StandardCharsets.UTF_8);
-System.out.println("Program output: " + output);
-System.out.println("Instructions executed: " + instructions.size());
+System.out.println("Program output: " + out.toString(StandardCharsets.UTF_8));
+System.out.println("Optimized instructions: " + program.instructions().size());
 ```
 
 #### Internals and classes
 
-- `Brainfuck4J.INSTANCE.run(...)` performs parsing, optimizations and execution.
-- `Instruction` and `InstructionType` describe the optimized instruction stream.
-- `MemoryType` and `AbstractMemory` implement the memory model (byte/short/int, size, bounds checking).
+- `Brainfuck4J.compile(...)` parses and optimizes the source into a `Program`.
+- `Program` is immutable and can be executed repeatedly (also concurrently, each execution with its own `Memory`).
+- `Instruction` and `InstructionType` describe the optimized instruction stream (`Program#instructions`).
+- `MemoryType` and `Memory` implement the memory model (8/16/32-bit cells, size, pointer state).
 - `DialectType` and `Dialect` handle multi-dialect support and conversion.
+- `ExportLanguage` exports a `Program` as standalone C (unsigned cells, no bounds checks) or Java source file.
 
 All undocumented methods and classes are considered internal implementation details and may change.
 
